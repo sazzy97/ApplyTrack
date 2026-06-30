@@ -2643,6 +2643,7 @@ let dashboardStatusFilter = "all";
 let dashboardActiveView = "table";
 let dashboardFilterOpen = false;
 let dashboardFilterStatuses = [];
+let dashboardFilterRoles = [];
 let dashboardFilterLocationTypes = [];
 let dashboardFilterPlatforms = [];
 let dashboardFilterDateApplied = "all";
@@ -2650,7 +2651,6 @@ let dashboardFilterSalaryMin = "";
 let dashboardFilterSalaryMax = "";
 let dashboardSortBy = "recent";
 let dashboardHasInterviewsThisWeek = false;
-let dashboardActiveSavedView = null;
 
 // Calendar state management variables
 let calendarActiveView = "month";
@@ -2666,7 +2666,7 @@ function getAvatarColor(char) {
 }
 
 /* ==========================================================================
-   MILESTONE 7: ADVANCED SEARCH, FILTERING & SAVED VIEWS HELPERS & CONNECTORS
+   MILESTONE 7: ADVANCED SEARCH & FILTERING HELPERS
    ========================================================================== */
 
 function parseJobDate(job) {
@@ -2736,323 +2736,8 @@ function isInterviewThisWeek(intObj) {
   const sat = new Date(sun);
   sat.setDate(sun.getDate() + 6);
   sat.setHours(23, 59, 59, 999);
-  
   return intDate >= sun && intDate <= sat;
 }
-
-async function fetchSavedViews() {
-  const systemViews = [
-    {
-      id: 'sys-remote',
-      name: 'Remote Roles',
-      isSystem: true,
-      filters: { search: '', statuses: [], dateApplied: 'all', platforms: [], salaryMin: '', salaryMax: '', locationTypes: ['remote'], sortBy: 'recent' }
-    },
-    {
-      id: 'sys-design',
-      name: 'Product Designer Jobs',
-      isSystem: true,
-      filters: { search: 'Product Designer', statuses: [], dateApplied: 'all', platforms: [], salaryMin: '', salaryMax: '', locationTypes: [], sortBy: 'recent' }
-    },
-    {
-      id: 'sys-waiting',
-      name: 'Waiting for Response',
-      isSystem: true,
-      filters: { search: '', statuses: ['applied'], dateApplied: 'older_7_days', platforms: [], salaryMin: '', salaryMax: '', locationTypes: [], sortBy: 'recent' }
-    },
-    {
-      id: 'sys-interviews',
-      name: 'Interviews This Week',
-      isSystem: true,
-      filters: { search: '', statuses: [], dateApplied: 'all', platforms: [], salaryMin: '', salaryMax: '', locationTypes: [], sortBy: 'recent', hasInterviewsThisWeek: true }
-    }
-  ];
-
-  if (window.USE_MOCK_AUTH) {
-    const list = JSON.parse(localStorage.getItem('applytrack_saved_views') || '[]');
-    if (list.length === 0) {
-      localStorage.setItem('applytrack_saved_views', JSON.stringify(systemViews));
-      return systemViews;
-    }
-    const customOnly = list.filter(v => !v.isSystem);
-    return [...systemViews, ...customOnly];
-  } else {
-    const { data, error } = await supabaseClient
-      .from('saved_views')
-      .select('*')
-      .order('created_at', { ascending: true });
-    if (error) throw error;
-    return [...systemViews, ...(data || [])];
-  }
-}
-
-async function createSavedView(name, filters) {
-  if (!name.trim()) throw new Error("View name cannot be empty");
-  
-  if (window.USE_MOCK_AUTH) {
-    const list = JSON.parse(localStorage.getItem('applytrack_saved_views') || '[]');
-    if (list.some(v => v.name.toLowerCase() === name.trim().toLowerCase())) {
-      throw new Error("A view with this name already exists");
-    }
-    const newView = {
-      id: 'mock-' + Math.random().toString(36).substr(2, 9),
-      name: name.trim(),
-      filters,
-      created_at: new Date().toISOString()
-    };
-    list.push(newView);
-    localStorage.setItem('applytrack_saved_views', JSON.stringify(list));
-    return newView;
-  } else {
-    const { data, error } = await supabaseClient
-      .from('saved_views')
-      .insert([{
-        user_id: currentUser.id,
-        name: name.trim(),
-        filters: filters
-      }])
-      .select();
-    if (error) {
-      if (error.code === '23505') throw new Error("A view with this name already exists");
-      throw error;
-    }
-    return data[0];
-  }
-}
-
-async function deleteSavedView(id) {
-  if (String(id).startsWith('sys-')) {
-    throw new Error("System views cannot be deleted");
-  }
-  if (window.USE_MOCK_AUTH) {
-    let list = JSON.parse(localStorage.getItem('applytrack_saved_views') || '[]');
-    list = list.filter(v => String(v.id) !== String(id));
-    localStorage.setItem('applytrack_saved_views', JSON.stringify(list));
-    return true;
-  } else {
-    const { error } = await supabaseClient
-      .from('saved_views')
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
-    return true;
-  }
-}
-
-async function renderSavedViewsUI() {
-  const sidebarList = document.getElementById('sidebar-saved-views-list');
-  const mobileList = document.getElementById('mobile-saved-views-list');
-  
-  if (!sidebarList && !mobileList) return;
-  
-  try {
-    const list = await fetchSavedViews();
-    
-    // Draw Sidebar
-    if (sidebarList) {
-      sidebarList.innerHTML = list.map(v => {
-        const isActive = String(dashboardActiveSavedView) === String(v.id);
-        return `
-          <div class="saved-view-item ${isActive ? 'active' : ''}" data-id="${v.id}">
-            <a class="saved-view-link" data-id="${v.id}">
-              <i class="fas ${v.isSystem ? 'fa-th-list' : 'fa-bookmark'}"></i>
-              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${v.name}</span>
-            </a>
-            ${v.isSystem ? '' : `
-              <button class="saved-view-delete-btn" data-id="${v.id}" title="Delete Saved View">
-                <i class="far fa-trash-alt"></i>
-              </button>
-            `}
-          </div>
-        `;
-      }).join('');
-      
-      // Sidebar click listeners
-      sidebarList.querySelectorAll('.saved-view-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-          e.preventDefault();
-          const viewId = link.getAttribute('data-id');
-          const matched = list.find(v => String(v.id) === String(viewId));
-          if (matched) applySavedView(matched);
-        });
-      });
-      
-      sidebarList.querySelectorAll('.saved-view-delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          const viewId = btn.getAttribute('data-id');
-          if (confirm("Are you sure you want to delete this saved view?")) {
-            try {
-              await deleteSavedView(viewId);
-              showToast("Saved view deleted", "success");
-              if (String(dashboardActiveSavedView) === String(viewId)) {
-                dashboardActiveSavedView = null;
-              }
-              renderSavedViewsUI();
-              if (window.location.hash === '#/dashboard') {
-                renderDashboard();
-              }
-            } catch (err) {
-              showToast(err.message, "error");
-            }
-          }
-        });
-      });
-    }
-    
-    // Draw Mobile Subbar
-    if (mobileList) {
-      mobileList.innerHTML = list.map(v => {
-        const isActive = String(dashboardActiveSavedView) === String(v.id);
-        return `
-          <div class="mobile-view-chip ${isActive ? 'active' : ''}" data-id="${v.id}">
-            <i class="fas ${v.isSystem ? 'fa-th-list' : 'fa-bookmark'}"></i>
-            <span>${v.name}</span>
-          </div>
-        `;
-      }).join('');
-      
-      // Mobile click listeners
-      mobileList.querySelectorAll('.mobile-view-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const viewId = chip.getAttribute('data-id');
-          const matched = list.find(v => String(v.id) === String(viewId));
-          if (matched) applySavedView(matched);
-        });
-      });
-    }
-  } catch (err) {
-    console.error("Failed to render saved views:", err);
-  }
-}
-
-function applySavedView(view) {
-  dashboardActiveSavedView = view.id;
-  const f = view.filters;
-  
-  // Unpack filters
-  dashboardSearchQuery = f.search || "";
-  dashboardFilterStatuses = f.statuses || [];
-  dashboardFilterDateApplied = f.dateApplied || "all";
-  dashboardFilterPlatforms = f.platforms || [];
-  dashboardFilterSalaryMin = f.salaryMin || "";
-  dashboardFilterSalaryMax = f.salaryMax || "";
-  dashboardFilterLocationTypes = f.locationTypes || [];
-  dashboardSortBy = f.sortBy || "recent";
-  dashboardHasInterviewsThisWeek = !!f.hasInterviewsThisWeek;
-  
-  // Refit quick status filter
-  if (dashboardFilterStatuses.length === 1) {
-    dashboardStatusFilter = dashboardFilterStatuses[0];
-  } else {
-    dashboardStatusFilter = "all";
-  }
-  
-  if (window.location.hash !== '#/dashboard') {
-    navigate('#/dashboard');
-  } else {
-    const searchInput = document.getElementById('dashboard-search');
-    if (searchInput) searchInput.value = dashboardSearchQuery;
-    
-    document.querySelectorAll('.filter-pills-row .filter-pill').forEach(pill => {
-      const pillFilter = pill.getAttribute('data-filter');
-      if (pillFilter === dashboardStatusFilter) {
-        pill.classList.add('active');
-      } else {
-        pill.classList.remove('active');
-      }
-    });
-
-    renderDashboard();
-  }
-}
-
-function clearActiveSavedView() {
-  if (dashboardActiveSavedView !== null) {
-    dashboardActiveSavedView = null;
-    document.querySelectorAll('.saved-view-item, .mobile-view-chip').forEach(item => {
-      item.classList.remove('active');
-    });
-  }
-}
-
-function openSaveViewModal() {
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.innerHTML = `
-    <div class="modal-container" style="max-width: 400px;">
-      <div class="modal-header">
-        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--color-primary);">
-          <i class="far fa-bookmark"></i> Save Current View
-        </h3>
-        <button class="btn-close-modal" id="modal-close-save-btn"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="modal-body" style="padding: 20px; display:flex; flex-direction:column; gap:16px;">
-        <div class="edit-form-group">
-          <label style="font-size: 0.72rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase;">View Name</label>
-          <input type="text" id="save-view-name-input" class="detail-input" placeholder="e.g. Remote Design Jobs" style="width: 100%;">
-        </div>
-      </div>
-      <div class="modal-footer" style="padding: 12px 20px; display:flex; justify-content:flex-end; gap:10px;">
-        <button id="modal-cancel-save-btn" class="btn btn-secondary btn-sm">Cancel</button>
-        <button id="modal-submit-save-btn" class="btn btn-primary btn-sm">Save View</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-  
-  const close = () => modal.remove();
-  document.getElementById('modal-close-save-btn').addEventListener('click', close);
-  document.getElementById('modal-cancel-save-btn').addEventListener('click', close);
-  
-  const submitBtn = document.getElementById('modal-submit-save-btn');
-  const nameInput = document.getElementById('save-view-name-input');
-  
-  nameInput.focus();
-  
-  const saveAction = async () => {
-    const name = nameInput.value.trim();
-    if (!name) {
-      showToast("Please enter a name for this view.", "error");
-      return;
-    }
-    
-    submitBtn.disabled = true;
-    
-    const filters = {
-      search: dashboardSearchQuery,
-      statuses: dashboardFilterStatuses,
-      dateApplied: dashboardFilterDateApplied,
-      platforms: dashboardFilterPlatforms,
-      salaryMin: dashboardFilterSalaryMin,
-      salaryMax: dashboardFilterSalaryMax,
-      locationTypes: dashboardFilterLocationTypes,
-      sortBy: dashboardSortBy,
-      hasInterviewsThisWeek: !!dashboardHasInterviewsThisWeek
-    };
-    
-    try {
-      const newView = await createSavedView(name, filters);
-      showToast("View saved successfully!", "success");
-      dashboardActiveSavedView = newView.id;
-      close();
-      renderSavedViewsUI();
-      renderDashboard();
-    } catch (err) {
-      submitBtn.disabled = false;
-      showToast(err.message, "error");
-    }
-  };
-  
-  submitBtn.addEventListener('click', saveAction);
-  nameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') saveAction();
-  });
-}
-
-/* ==========================================================================
-   DASHBOARD CONTROLLER
-   ========================================================================== */
 
 async function renderDashboard() {
   const root = getAppViewRoot();
@@ -3116,8 +2801,9 @@ async function renderDashboard() {
     const offerCount = mockJobs.filter(j => j.status === 'offer').length;
     const rejectedCount = mockJobs.filter(j => j.status === 'rejected').length;
 
-    // Dynamically fetch unique platforms
+    // Dynamically fetch unique platforms and roles
     const uniquePlatforms = [...new Set(mockJobs.map(j => j.source).filter(Boolean))];
+    const uniqueRoles = [...new Set(mockJobs.map(j => j.role).filter(Boolean))];
 
     root.innerHTML = `
       <div class="dashboard-page-container">
@@ -3174,9 +2860,6 @@ async function renderDashboard() {
           </div>
         </div>
 
-        <!-- Mobile Scrollable Saved Views Row -->
-        <div class="mobile-saved-views-wrapper" id="mobile-saved-views-list"></div>
-
         <!-- Dashboard Control Bar -->
         <div class="dashboard-controls-row">
           <div class="search-wrapper">
@@ -3212,6 +2895,40 @@ async function renderDashboard() {
         <!-- Expandable Advanced Filters Drawer -->
         <div class="advanced-filters-panel ${dashboardFilterOpen ? 'open' : ''}" id="advanced-filters-section">
           <div class="filters-grid">
+            
+            <!-- Job Title Roles Checkboxes -->
+            <div class="filter-column">
+              <div class="filter-column-title">Job Title</div>
+              <div class="filter-options-list" style="max-height: 150px; overflow-y: auto;">
+                ${uniqueRoles.map(role => `
+                  <label class="filter-checkbox-label">
+                    <input type="checkbox" value="${role}" class="filter-role" ${dashboardFilterRoles.includes(role) ? 'checked' : ''}> ${role}
+                  </label>
+                `).join('') || '<span style="color:var(--color-text-secondary); font-size:0.8rem; font-style:italic;">No roles found</span>'}
+              </div>
+            </div>
+
+            <!-- Status Checkboxes -->
+            <div class="filter-column">
+              <div class="filter-column-title">Status</div>
+              <div class="filter-options-list">
+                <label class="filter-checkbox-label">
+                  <input type="checkbox" value="applied" class="filter-status" ${dashboardFilterStatuses.includes('applied') ? 'checked' : ''}> Applied
+                </label>
+                <label class="filter-checkbox-label">
+                  <input type="checkbox" value="assessment" class="filter-status" ${dashboardFilterStatuses.includes('assessment') ? 'checked' : ''}> Assessment
+                </label>
+                <label class="filter-checkbox-label">
+                  <input type="checkbox" value="interview" class="filter-status" ${dashboardFilterStatuses.includes('interview') ? 'checked' : ''}> Interview
+                </label>
+                <label class="filter-checkbox-label">
+                  <input type="checkbox" value="offer" class="filter-status" ${dashboardFilterStatuses.includes('offer') ? 'checked' : ''}> Offer
+                </label>
+                <label class="filter-checkbox-label">
+                  <input type="checkbox" value="rejected" class="filter-status" ${dashboardFilterStatuses.includes('rejected') ? 'checked' : ''}> Rejected
+                </label>
+              </div>
+            </div>
             
             <!-- Work Style -->
             <div class="filter-column">
@@ -3293,9 +3010,6 @@ async function renderDashboard() {
           </div>
           
           <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid var(--color-border); padding-top:16px;">
-            <button id="btn-save-current-view" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:6px;">
-              <i class="far fa-bookmark"></i> Save Current View
-            </button>
             <button id="btn-clear-all-filters" class="btn btn-outline btn-sm" style="color:var(--color-danger); border-color:transparent;">
               Clear All Filters
             </button>
@@ -3315,9 +3029,14 @@ async function renderDashboard() {
         filtered = filtered.filter(j => j.status === dashboardStatusFilter);
       }
       
-      // 2. Status Advanced Checkbox Filter (if any are saved in custom views)
+      // 2. Status Advanced Checkbox Filter
       if (dashboardFilterStatuses.length > 0) {
         filtered = filtered.filter(j => dashboardFilterStatuses.includes(j.status));
+      }
+
+      // 2b. Role Advanced Checkbox Filter
+      if (dashboardFilterRoles.length > 0) {
+        filtered = filtered.filter(j => j.role && dashboardFilterRoles.includes(j.role));
       }
       
       // 3. Global Multi-field Search
@@ -3600,7 +3319,6 @@ async function renderDashboard() {
     const searchInput = document.getElementById('dashboard-search');
     searchInput?.addEventListener('input', (e) => {
       dashboardSearchQuery = e.target.value.toLowerCase();
-      clearActiveSavedView();
       filterAndRender();
     });
     
@@ -3609,7 +3327,6 @@ async function renderDashboard() {
         document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
         dashboardStatusFilter = pill.getAttribute('data-filter');
-        clearActiveSavedView();
         filterAndRender();
       });
     });
@@ -3637,6 +3354,32 @@ async function renderDashboard() {
       }
     });
 
+    // Advanced checkbox Roles
+    document.querySelectorAll('.filter-role').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const val = cb.value;
+        if (cb.checked) {
+          if (!dashboardFilterRoles.includes(val)) dashboardFilterRoles.push(val);
+        } else {
+          dashboardFilterRoles = dashboardFilterRoles.filter(v => v !== val);
+        }
+        filterAndRender();
+      });
+    });
+
+    // Advanced checkbox Statuses
+    document.querySelectorAll('.filter-status').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const val = cb.value;
+        if (cb.checked) {
+          if (!dashboardFilterStatuses.includes(val)) dashboardFilterStatuses.push(val);
+        } else {
+          dashboardFilterStatuses = dashboardFilterStatuses.filter(v => v !== val);
+        }
+        filterAndRender();
+      });
+    });
+
     // Advanced checkbox Location types
     document.querySelectorAll('.filter-loc-type').forEach(cb => {
       cb.addEventListener('change', () => {
@@ -3646,7 +3389,6 @@ async function renderDashboard() {
         } else {
           dashboardFilterLocationTypes = dashboardFilterLocationTypes.filter(v => v !== val);
         }
-        clearActiveSavedView();
         filterAndRender();
       });
     });
@@ -3660,7 +3402,6 @@ async function renderDashboard() {
         } else {
           dashboardFilterPlatforms = dashboardFilterPlatforms.filter(v => v !== val);
         }
-        clearActiveSavedView();
         filterAndRender();
       });
     });
@@ -3668,28 +3409,24 @@ async function renderDashboard() {
     // Advanced select Date
     document.getElementById('filter-date-applied')?.addEventListener('change', (e) => {
       dashboardFilterDateApplied = e.target.value;
-      clearActiveSavedView();
       filterAndRender();
     });
 
     // Advanced select Salary Min
     document.getElementById('filter-salary-min')?.addEventListener('change', (e) => {
       dashboardFilterSalaryMin = e.target.value;
-      clearActiveSavedView();
       filterAndRender();
     });
 
     // Advanced select Salary Max
     document.getElementById('filter-salary-max')?.addEventListener('change', (e) => {
       dashboardFilterSalaryMax = e.target.value;
-      clearActiveSavedView();
       filterAndRender();
     });
 
     // Advanced select Sort By
     document.getElementById('filter-sort-by')?.addEventListener('change', (e) => {
       dashboardSortBy = e.target.value;
-      clearActiveSavedView();
       filterAndRender();
     });
 
@@ -3697,6 +3434,8 @@ async function renderDashboard() {
     document.getElementById('btn-clear-all-filters')?.addEventListener('click', () => {
       dashboardSearchQuery = "";
       dashboardStatusFilter = "all";
+      dashboardFilterStatuses = [];
+      dashboardFilterRoles = [];
       dashboardFilterLocationTypes = [];
       dashboardFilterPlatforms = [];
       dashboardFilterDateApplied = "all";
@@ -3704,7 +3443,6 @@ async function renderDashboard() {
       dashboardFilterSalaryMax = "";
       dashboardSortBy = "recent";
       dashboardHasInterviewsThisWeek = false;
-      clearActiveSavedView();
       
       if (searchInput) searchInput.value = "";
       
@@ -3726,16 +3464,13 @@ async function renderDashboard() {
       
       const panel = document.getElementById('advanced-filters-section');
       if (panel) {
+        panel.querySelectorAll('.filter-role').forEach(cb => cb.checked = false);
+        panel.querySelectorAll('.filter-status').forEach(cb => cb.checked = false);
         panel.querySelectorAll('.filter-loc-type').forEach(cb => cb.checked = false);
         panel.querySelectorAll('.filter-platform').forEach(cb => cb.checked = false);
       }
       
       filterAndRender();
-    });
-
-    // Save view button
-    document.getElementById('btn-save-current-view')?.addEventListener('click', () => {
-      openSaveViewModal();
     });
 
     // Sync button logic
@@ -3754,9 +3489,6 @@ async function renderDashboard() {
         renderDashboard();
       }
     });
-
-    // Populate saved views dynamically in the DOM
-    await renderSavedViewsUI();
 
     startRelativeTimeUpdater();
   } catch (err) {
@@ -4100,16 +3832,6 @@ function renderAppShell(currentHash) {
           </a>
         </nav>
         
-        <!-- Sidebar Saved Views Section -->
-        <div class="sidebar-views-section" id="sidebar-saved-views-section">
-          <div class="sidebar-views-header">
-            <span>Saved Views</span>
-          </div>
-          <div class="saved-views-list" id="sidebar-saved-views-list">
-            <!-- Dynamic Saved Views -->
-          </div>
-        </div>
-
         <div class="sidebar-footer">
           <div class="sidebar-user">
             <i class="far fa-user-circle"></i>
@@ -4166,9 +3888,6 @@ function renderAppShell(currentHash) {
   };
   document.getElementById('sidebar-logout-btn')?.addEventListener('click', handleLogout);
   document.getElementById('bottom-logout-btn')?.addEventListener('click', handleLogout);
-  
-  // Render saved views inside the sidebar immediately on app shell mount
-  setTimeout(renderSavedViewsUI, 50);
 }
 
 function updateAppShellActiveLink(currentHash) {
