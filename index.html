@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApplyTrack - Never Lose Track of a Job Application Again</title>
+  
+  <!-- Meta Tags for SEO -->
+  <meta name="description" content="Connect your Gmail and let AI organize your job applications, interviews, rejections, and offers automatically on a clean pipeline dashboard.">
+  <meta name="author" content="ApplyTrack Team">
+  <meta name="keywords" content="job tracker, job hunt, career pipeline, email sync, job search tracker, Supabase auth, job board">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="styles.css?v=2">
+</head>
+<body>
+
+  <!-- Demo Banner for local testing sandbox guidance -->
+  <div id="demo-banner-wrapper" style="display: none;">
+    <div class="demo-banner">
+      <span class="badge">Demo Mode</span>
+      <span>Running with simulated authentication. Connect your live database in <a href="file:///Users/Osaze/Desktop/ApplyTrack%20AI/config.js">config.js</a></span>
+    </div>
+  </div>
+
+  <!-- Main Navigation Bar -->
+  <nav class="navbar">
+    <div class="app-container navbar-container">
+      <a href="#/" class="logo">
+        <span class="logo-icon">A</span>
+        ApplyTrack
+      </a>
+      
+      <div class="nav-links" id="nav-links">
+        <!-- Links loaded dynamically in app.js -->
+        <a href="#/" class="nav-link">Features</a>
+        <a href="#/" class="nav-link">Problem</a>
+        <a href="#/" class="nav-link">FAQ</a>
+      </div>
+      
+      <div class="nav-actions" id="nav-actions">
+        <!-- Actions loaded dynamically in app.js -->
+        <a href="#/login" class="btn btn-outline btn-sm">Log In</a>
+        <a href="#/signup" class="btn btn-primary btn-sm">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- SPA Target Mount Node -->
+  <main id="app-root">
+    <!-- Screen content injected dynamically via app.js -->
+    <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary);"></i>
+      <p style="color:var(--color-text-secondary); font-weight:500;">Loading ApplyTrack...</p>
+    </div>
+  </main>
+
+  <!-- Sticky Footer -->
+  <footer class="footer">
+    <div class="app-container footer-container">
+      <div class="footer-text">
+        &copy; 2026 ApplyTrack Inc. All rights reserved. Made with love for job seekers.
+      </div>
+      <div class="footer-links">
+        <a href="#/" class="footer-link">Privacy Policy</a>
+        <a href="#/" class="footer-link">Terms of Service</a>
+        <a href="#/" class="footer-link">Support Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Supabase JS Library Local Copy -->
+  <script src="supabase-js.js"></script>
+  
+  <!-- App Configuration -->
+  <script src="config.js?v=2"></script>
+  
+  <!-- Dynamic Logic Router -->
+  <script src="app.js?v=2"></script>
+  
+  <!-- Boot check script to reveal demo banner if window.USE_MOCK_AUTH is set -->
+  <script>
+    function checkDemoBanner() {
+      if (window.USE_MOCK_AUTH) {
+        document.getElementById('demo-banner-wrapper').style.display = 'block';
+      }
+    }
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', checkDemoBanner);
+    } else {
+      checkDemoBanner();
+    }
+  </script>
+</body>
+</html>
