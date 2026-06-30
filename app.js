@@ -2641,6 +2641,15 @@ function openSyncLogModal(scanLogs) {
 let dashboardSearchQuery = "";
 let dashboardStatusFilter = "all";
 let dashboardActiveView = "table";
+let dashboardFilterOpen = false;
+let dashboardFilterLocationTypes = [];
+let dashboardFilterPlatforms = [];
+let dashboardFilterDateApplied = "all";
+let dashboardFilterSalaryMin = "";
+let dashboardFilterSalaryMax = "";
+let dashboardSortBy = "recent";
+let dashboardHasInterviewsThisWeek = false;
+let dashboardActiveSavedView = null;
 
 // Calendar state management variables
 let calendarActiveView = "month";
