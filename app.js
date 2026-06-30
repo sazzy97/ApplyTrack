@@ -933,7 +933,7 @@ function renderForgotPassword() {
 let onboardingStep = 1;
 
 function renderOnboarding() {
-  const root = document.getElementById('app-root');
+  const root = getAppViewRoot();
   
   // Basic shell layout for Onboarding page
   root.innerHTML = `
@@ -3105,7 +3105,7 @@ async function renderDashboard() {
 
 // 7. SETTINGS PAGE
 function renderSettings() {
-  const root = document.getElementById('app-root');
+  const root = getAppViewRoot();
   
   const isError = localStorage.getItem('applytrack_simulate_error') === 'true' || currentProfile?.sync_error;
   const syncState = currentProfile?.gmail_connected && !isError;
@@ -3562,8 +3562,8 @@ async function handleRouting() {
       return;
     }
     
-    if (route.guestOnly && currentUser) {
-      // Logged in user trying to access login/signup
+    if (currentUser && (currentHash === '#/' || currentHash === '#' || route.guestOnly)) {
+      // Logged in user trying to access landing, login, or signup
       if (currentProfile?.onboarding_completed) {
         navigate('#/dashboard');
       } else {
@@ -3889,7 +3889,7 @@ async function renderInterviews() {
             ${dayEvents.map(event => {
               const badgeClass = getBadgeTypeClass(event.interview_type);
               const statusClass = event.status.toLowerCase();
-              return `<span class="event-badge ${badgeClass} ${statusClass}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
+              return `<span class="event-badge ${badgeClass} ${statusClass}" data-id="${event.id}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
             }).join('')}
           </div>
         </div>
@@ -3910,7 +3910,7 @@ async function renderInterviews() {
             ${dayEvents.map(event => {
               const badgeClass = getBadgeTypeClass(event.interview_type);
               const statusClass = event.status.toLowerCase();
-              return `<span class="event-badge ${badgeClass} ${statusClass}" title="${event.company} - ${event.interview_type}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
+              return `<span class="event-badge ${badgeClass} ${statusClass}" data-id="${event.id}" title="${event.company} - ${event.interview_type}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
             }).join('')}
           </div>
         </div>
@@ -3933,7 +3933,7 @@ async function renderInterviews() {
             ${dayEvents.map(event => {
               const badgeClass = getBadgeTypeClass(event.interview_type);
               const statusClass = event.status.toLowerCase();
-              return `<span class="event-badge ${badgeClass} ${statusClass}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
+              return `<span class="event-badge ${badgeClass} ${statusClass}" data-id="${event.id}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
             }).join('')}
           </div>
         </div>
@@ -3949,6 +3949,15 @@ async function renderInterviews() {
         if (e.target.classList.contains('event-badge')) return;
         const dateStr = cell.getAttribute('data-date');
         openScheduleModal(null, dateStr);
+      });
+    });
+
+    // Attach click handler to event badges to edit
+    mount.querySelectorAll('.event-badge').forEach(badge => {
+      badge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const intId = badge.getAttribute('data-id');
+        openScheduleModal(intId);
       });
     });
   }
@@ -4194,6 +4203,15 @@ async function renderInterviews() {
       });
     });
 
+    // 6.5. Edit button action from upcoming widget list
+    document.querySelectorAll('.edit-int-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const intId = btn.getAttribute('data-id');
+        openScheduleModal(intId);
+      });
+    });
+
     // 7. Click list item rows to edit
     document.querySelectorAll('.interview-item-row.status-upcoming').forEach(row => {
       row.addEventListener('click', (e) => {
@@ -4245,15 +4263,14 @@ async function renderInterviews() {
 
     // Modal HTML overlay
     const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'flex';
+    modal.className = 'modal-overlay';
     modal.innerHTML = `
-      <div class="modal-content" style="max-width: 550px; border-radius: var(--radius-lg); overflow:hidden;">
+      <div class="modal-container" style="max-width: 550px;">
         <div class="modal-header" style="background-color: var(--color-primary); color: #FFFFFF; padding: 18px 24px;">
           <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0; color:#FFFFFF;">
             ${isEdit ? '<i class="fas fa-edit"></i> Edit Interview Details' : '<i class="far fa-calendar-plus"></i> Schedule New Interview'}
           </h3>
-          <button id="modal-close-btn" style="background:transparent; border:none; color:#FFFFFF; font-size:1.25rem; cursor:pointer;"><i class="fas fa-times"></i></button>
+          <button class="btn-close-modal" id="modal-close-btn" style="color: #FFFFFF; opacity: 0.85;"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body" style="padding: 24px; max-height:70vh; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
           
