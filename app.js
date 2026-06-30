@@ -2800,6 +2800,7 @@ function openSyncLogModal(scanLogs) {
 let dashboardSearchQuery = "";
 let dashboardStatusFilter = "all";
 let dashboardActiveView = "table";
+let kanbanActiveColumn = "applied";
 let dashboardFilterOpen = false;
 let dashboardFilterStatuses = [];
 let dashboardFilterRoles = [];
@@ -3410,20 +3411,22 @@ async function renderDashboard() {
       
       if (dashboardActiveView === 'table') {
         viewContainer.innerHTML = `
-          <div class="app-table-container">
-            <table class="app-table">
-              <thead>
-                <tr>
-                  <th>Company</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Source</th>
-                  <th>Date Applied</th>
-                  <th>Last Updated</th>
-                </tr>
-              </thead>
-              <tbody id="table-body-target"></tbody>
-            </table>
+          <div class="table-responsive-container">
+            <div class="app-table-container">
+              <table class="app-table">
+                <thead>
+                  <tr>
+                    <th>Company</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Source</th>
+                    <th>Date Applied</th>
+                    <th>Last Updated</th>
+                  </tr>
+                </thead>
+                <tbody id="table-body-target"></tbody>
+              </table>
+            </div>
           </div>
         `;
         
@@ -3478,9 +3481,24 @@ async function renderDashboard() {
           tbody.appendChild(tr);
         });
       } else {
+        const colAppliedCount = filtered.filter(j => j.status === 'applied').length;
+        const colAssessmentCount = filtered.filter(j => j.status === 'assessment').length;
+        const colInterviewCount = filtered.filter(j => j.status === 'interview').length;
+        const colOfferCount = filtered.filter(j => j.status === 'offer').length;
+        const colRejectedCount = filtered.filter(j => j.status === 'rejected').length;
+
         viewContainer.innerHTML = `
+          <!-- Kanban column switcher tabs on mobile -->
+          <div class="mobile-kanban-tabs">
+            <button class="mobile-kanban-tab-btn ${kanbanActiveColumn === 'applied' ? 'active' : ''}" data-col="applied">Applied (${colAppliedCount})</button>
+            <button class="mobile-kanban-tab-btn ${kanbanActiveColumn === 'assessment' ? 'active' : ''}" data-col="assessment">Assessment (${colAssessmentCount})</button>
+            <button class="mobile-kanban-tab-btn ${kanbanActiveColumn === 'interview' ? 'active' : ''}" data-col="interview">Interview (${colInterviewCount})</button>
+            <button class="mobile-kanban-tab-btn ${kanbanActiveColumn === 'offer' ? 'active' : ''}" data-col="offer">Offer (${colOfferCount})</button>
+            <button class="mobile-kanban-tab-btn ${kanbanActiveColumn === 'rejected' ? 'active' : ''}" data-col="rejected">Rejected (${colRejectedCount})</button>
+          </div>
+
           <div class="kanban-board">
-            <div class="kanban-col">
+            <div class="kanban-col ${kanbanActiveColumn === 'applied' ? 'mobile-active' : ''}">
               <div class="kanban-col-header" style="border-top-color: var(--color-secondary);">
                 <span>Applied</span>
                 <span class="kanban-col-count" id="col-applied-count">0</span>
@@ -3488,7 +3506,7 @@ async function renderDashboard() {
               <div class="kanban-cards-list" id="col-applied-list"></div>
             </div>
             
-            <div class="kanban-col">
+            <div class="kanban-col ${kanbanActiveColumn === 'assessment' ? 'mobile-active' : ''}">
               <div class="kanban-col-header" style="border-top-color: var(--color-warning);">
                 <span>Assessment</span>
                 <span class="kanban-col-count" id="col-assessment-count">0</span>
@@ -3496,7 +3514,7 @@ async function renderDashboard() {
               <div class="kanban-cards-list" id="col-assessment-list"></div>
             </div>
             
-            <div class="kanban-col">
+            <div class="kanban-col ${kanbanActiveColumn === 'interview' ? 'mobile-active' : ''}">
               <div class="kanban-col-header" style="border-top-color: #8B5CF6;">
                 <span>Interviewing</span>
                 <span class="kanban-col-count" id="col-interview-count">0</span>
@@ -3504,7 +3522,7 @@ async function renderDashboard() {
               <div class="kanban-cards-list" id="col-interview-list"></div>
             </div>
             
-            <div class="kanban-col">
+            <div class="kanban-col ${kanbanActiveColumn === 'offer' ? 'mobile-active' : ''}">
               <div class="kanban-col-header" style="border-top-color: var(--color-success);">
                 <span>Offer</span>
                 <span class="kanban-col-count" id="col-offer-count">0</span>
@@ -3512,7 +3530,7 @@ async function renderDashboard() {
               <div class="kanban-cards-list" id="col-offer-list"></div>
             </div>
             
-            <div class="kanban-col">
+            <div class="kanban-col ${kanbanActiveColumn === 'rejected' ? 'mobile-active' : ''}">
               <div class="kanban-col-header" style="border-top-color: var(--color-danger);">
                 <span>Rejected</span>
                 <span class="kanban-col-count" id="col-rejected-count">0</span>
@@ -3522,11 +3540,11 @@ async function renderDashboard() {
           </div>
         `;
         
-        document.getElementById('col-applied-count').textContent = filtered.filter(j => j.status === 'applied').length;
-        document.getElementById('col-assessment-count').textContent = filtered.filter(j => j.status === 'assessment').length;
-        document.getElementById('col-interview-count').textContent = filtered.filter(j => j.status === 'interview').length;
-        document.getElementById('col-offer-count').textContent = filtered.filter(j => j.status === 'offer').length;
-        document.getElementById('col-rejected-count').textContent = filtered.filter(j => j.status === 'rejected').length;
+        document.getElementById('col-applied-count').textContent = colAppliedCount;
+        document.getElementById('col-assessment-count').textContent = colAssessmentCount;
+        document.getElementById('col-interview-count').textContent = colInterviewCount;
+        document.getElementById('col-offer-count').textContent = colOfferCount;
+        document.getElementById('col-rejected-count').textContent = colRejectedCount;
         
         const lists = {
           applied: document.getElementById('col-applied-list'),
@@ -3562,6 +3580,14 @@ async function renderDashboard() {
               </div>
             `;
           }
+        });
+
+        // Toggle mobile Kanban column tab selectors
+        viewContainer.querySelectorAll('.mobile-kanban-tab-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            kanbanActiveColumn = btn.getAttribute('data-col');
+            filterAndRender();
+          });
         });
       }
     };
@@ -4311,44 +4337,83 @@ function renderAppShell(currentHash) {
   
   root.innerHTML = `
     <div class="app-shell">
-      <!-- Left Sidebar for Desktop -->
-      <aside class="app-sidebar">
-        <a href="#/dashboard" class="sidebar-brand">
+      <!-- Mobile Brand Header -->
+      <header class="mobile-header">
+        <a href="#/dashboard" class="mobile-header-brand">
           <span class="logo-icon">A</span>
           ApplyTrack
         </a>
+        <button class="mobile-hamburger-btn" id="mobile-hamburger-btn">
+          <i class="fas fa-bars"></i>
+        </button>
+      </header>
+
+      <!-- Left Sidebar for Desktop/Tablet -->
+      <aside class="app-sidebar">
+        <a href="#/dashboard" class="sidebar-brand">
+          <span class="logo-icon">A</span>
+          <span class="logo-text">ApplyTrack</span>
+        </a>
         <nav class="sidebar-nav">
           <a href="#/dashboard" class="sidebar-link ${activeTab === 'dashboard' ? 'active' : ''}" id="sidebar-link-dashboard">
-            <i class="fas fa-chart-pie"></i> Dashboard
+            <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
           </a>
           <a href="#/interviews" class="sidebar-link ${activeTab === 'interviews' ? 'active' : ''}" id="sidebar-link-interviews">
-            <i class="fas fa-calendar-alt"></i> Interviews
+            <i class="fas fa-calendar-alt"></i> <span>Interviews</span>
           </a>
           <a href="#/notifications" class="sidebar-link ${activeTab === 'notifications' ? 'active' : ''}" id="sidebar-link-notifications" style="position:relative; display:flex; align-items:center;">
-            <i class="fas fa-bell"></i> Notifications
+            <i class="fas fa-bell"></i> <span>Notifications</span>
             <span class="sidebar-badge" id="sidebar-unread-count" style="display:none;">0</span>
           </a>
           <a href="#/settings" class="sidebar-link ${activeTab === 'settings' ? 'active' : ''}" id="sidebar-link-settings">
-            <i class="fas fa-cog"></i> Settings
+            <i class="fas fa-cog"></i> <span>Settings</span>
           </a>
           <a href="#/onboarding" class="sidebar-link ${activeTab === 'onboarding' ? 'active' : ''}" id="sidebar-link-onboarding">
-            <i class="fas fa-map-signs"></i> Setup Guide
+            <i class="fas fa-map-signs"></i> <span>Setup Guide</span>
           </a>
         </nav>
         
         <div class="sidebar-footer">
           <div class="sidebar-user">
             <i class="far fa-user-circle"></i>
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;">
+            <span class="sidebar-user-info" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;">
               ${currentProfile?.full_name || currentUser.email}
             </span>
           </div>
-          <button id="sidebar-logout-btn" class="btn btn-outline btn-sm" style="border-color: rgba(255, 255, 255, 0.15); color: #FFFFFF; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <i class="fas fa-sign-out-alt"></i> Log Out
+          <button id="sidebar-logout-btn" class="btn btn-logout btn-outline btn-sm" style="border-color: rgba(255, 255, 255, 0.15); color: #FFFFFF; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i class="fas fa-sign-out-alt"></i> <span>Log Out</span>
           </button>
         </div>
       </aside>
       
+      <!-- Mobile Slide-out Drawer Overlay -->
+      <div class="mobile-drawer-overlay" id="mobile-drawer-overlay">
+        <div class="mobile-drawer-content">
+          <div class="mobile-drawer-header">
+            <div>
+              <span class="logo-icon">A</span>
+              ApplyTrack
+            </div>
+            <button class="close-drawer-btn" id="close-drawer-btn"><i class="fas fa-times"></i></button>
+          </div>
+          <div class="mobile-drawer-body">
+            <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
+              <i class="fas fa-map-signs"></i> Setup Guide
+            </a>
+            <div class="drawer-divider"></div>
+            <div class="drawer-user-info">
+              <i class="far fa-user-circle"></i>
+              <span id="drawer-user-email">
+                ${currentProfile?.full_name || currentUser.email}
+              </span>
+            </div>
+            <button id="drawer-logout-btn" class="btn btn-outline btn-sm" style="width:100%; border-color:var(--color-danger); color:var(--color-danger); margin-top:auto; display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px;">
+              <i class="fas fa-sign-out-alt"></i> Log Out
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Main Content Area -->
       <main class="app-content-pane">
         <div id="app-content-view">
@@ -4358,26 +4423,22 @@ function renderAppShell(currentHash) {
       
       <!-- Bottom Navigation for Mobile -->
       <nav class="bottom-nav">
-        <a href="#/dashboard" class="bottom-nav-link ${activeTab === 'dashboard' ? 'active' : ''}" id="bottom-link-dashboard">
+        <a href="#/dashboard" class="bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}" id="bottom-link-dashboard">
           <i class="fas fa-chart-pie"></i>
           <span>Dashboard</span>
         </a>
-        <a href="#/interviews" class="bottom-nav-link ${activeTab === 'interviews' ? 'active' : ''}" id="bottom-link-interviews">
+        <a href="#/interviews" class="bottom-nav-item ${activeTab === 'interviews' ? 'active' : ''}" id="bottom-link-interviews">
           <i class="fas fa-calendar-alt"></i>
           <span>Interviews</span>
         </a>
-        <a href="#/notifications" class="bottom-nav-link ${activeTab === 'notifications' ? 'active' : ''}" id="bottom-link-notifications" style="position:relative;">
+        <a href="#/notifications" class="bottom-nav-item ${activeTab === 'notifications' ? 'active' : ''}" id="bottom-link-notifications" style="position:relative;">
           <i class="fas fa-bell"></i>
           <span>Alerts</span>
-          <span class="menu-badge" id="mobile-unread-count" style="display:none;">0</span>
+          <span class="bottom-nav-badge" id="mobile-unread-count" style="display:none;">0</span>
         </a>
-        <a href="#/settings" class="bottom-nav-link ${activeTab === 'settings' ? 'active' : ''}" id="bottom-link-settings">
+        <a href="#/settings" class="bottom-nav-item ${activeTab === 'settings' ? 'active' : ''}" id="bottom-link-settings">
           <i class="fas fa-cog"></i>
           <span>Settings</span>
-        </a>
-        <a id="bottom-logout-btn" class="bottom-nav-link" style="color: var(--color-danger); cursor: pointer;">
-          <i class="fas fa-sign-out-alt"></i>
-          <span>Log Out</span>
         </a>
       </nav>
     </div>
@@ -4391,8 +4452,30 @@ function renderAppShell(currentHash) {
       showToast(err.message, 'error');
     }
   };
+  
+  // Sidebar & Drawer triggers
   document.getElementById('sidebar-logout-btn')?.addEventListener('click', handleLogout);
-  document.getElementById('bottom-logout-btn')?.addEventListener('click', handleLogout);
+  document.getElementById('drawer-logout-btn')?.addEventListener('click', handleLogout);
+  
+  const drawerOverlay = document.getElementById('mobile-drawer-overlay');
+  
+  document.getElementById('mobile-hamburger-btn')?.addEventListener('click', () => {
+    drawerOverlay?.classList.add('open');
+  });
+  
+  document.getElementById('close-drawer-btn')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
+  
+  drawerOverlay?.addEventListener('click', (e) => {
+    if (e.target === drawerOverlay) {
+      drawerOverlay.classList.remove('open');
+    }
+  });
+
+  document.getElementById('drawer-link-onboarding')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
   
   // Initial count update
   updateMenuNotificationBadges();
@@ -4401,7 +4484,7 @@ function renderAppShell(currentHash) {
 function updateAppShellActiveLink(currentHash) {
   const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : 'dashboard';
   
-  document.querySelectorAll('.sidebar-link, .bottom-nav-link').forEach(link => {
+  document.querySelectorAll('.sidebar-link, .bottom-nav-item').forEach(link => {
     link.classList.remove('active');
   });
   
@@ -4649,6 +4732,55 @@ async function renderInterviews() {
             <!-- Right pane: Widgets list -->
             <div class="interviews-widgets">
               
+              <!-- Selected Day Schedule Card -->
+              <div class="interview-widget-card" style="border-top: 4px solid var(--color-primary);">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); display: flex; align-items: center; justify-content: space-between;">
+                  <span>Selected Date Schedule</span>
+                  <span class="badge-status" style="background-color: var(--color-primary-light); color: var(--color-primary); font-size: 0.75rem; padding: 2px 8px;">
+                    ${calendarSelectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </span>
+                </h3>
+                <div class="interview-widget-list">
+                  ${(() => {
+                    const dateStr = calendarSelectedDate.toISOString().split('T')[0];
+                    const dayEvents = interviews.filter(i => i.date === dateStr);
+                    if (dayEvents.length === 0) {
+                      return `<p style="color: var(--color-text-secondary); font-size: 0.88rem; font-style: italic;">No interviews scheduled for this date.</p>`;
+                    }
+                    return dayEvents.map(event => {
+                      const intDate = new Date(event.date + 'T' + event.time);
+                      const formattedTime = intDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+                      return `
+                        <div class="interview-item-row status-${event.status.toLowerCase()}" data-id="${event.id}">
+                          <div class="interview-item-info">
+                            <div class="interview-item-title">${event.company} &bull; ${event.role}</div>
+                            <div class="interview-item-meta">
+                              <span><i class="far fa-clock"></i> ${formattedTime}</span>
+                              <span class="badge-status" style="background-color: var(--color-secondary-light); color: var(--color-secondary); font-size:0.65rem; padding: 2px 6px;">${event.interview_type}</span>
+                            </div>
+                            ${event.meeting_link ? `
+                              <div style="margin-top: 8px;">
+                                <a href="${event.meeting_link.startsWith('http') ? event.meeting_link : 'https://' + event.meeting_link}" target="_blank" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; font-size:0.75rem; background-color: var(--color-secondary-light); color: var(--color-secondary); border-color: transparent;">
+                                  <i class="fas fa-video"></i> Join Meeting
+                                </a>
+                              </div>
+                            ` : ''}
+                          </div>
+                          <div class="interview-item-actions">
+                            <button class="btn btn-outline btn-sm edit-int-btn" data-id="${event.id}" title="Edit interview" style="padding: 6px 8px; font-size:0.75rem; border-color:var(--color-border);"><i class="fas fa-pencil-alt"></i></button>
+                            ${event.status === 'Upcoming' ? `
+                              <button class="btn btn-outline btn-sm complete-int-btn" data-id="${event.id}" title="Mark completed" style="padding: 6px 8px; font-size:0.75rem; border-color:var(--color-success); color:var(--color-success);"><i class="fas fa-check"></i></button>
+                              <button class="btn btn-outline btn-sm cancel-int-btn" data-id="${event.id}" title="Cancel interview" style="padding: 6px 8px; font-size:0.75rem; border-color:var(--color-danger); color:var(--color-danger);"><i class="fas fa-times"></i></button>
+                            ` : ''}
+                            <button class="btn btn-outline btn-sm delete-int-btn" data-id="${event.id}" title="Delete interview" style="padding: 6px 8px; font-size:0.75rem; border-color:var(--color-border); color:var(--color-danger);"><i class="far fa-trash-alt"></i></button>
+                          </div>
+                        </div>
+                      `;
+                    }).join('');
+                  })()}
+                </div>
+              </div>
+
               <!-- Upcoming Interviews Card -->
               <div class="interview-widget-card" style="border-top: 4px solid var(--color-secondary);">
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); display: flex; align-items: center; justify-content: space-between;">
@@ -4795,8 +4927,14 @@ async function renderInterviews() {
             ${dayEvents.map(event => {
               const badgeClass = getBadgeTypeClass(event.interview_type);
               const statusClass = event.status.toLowerCase();
-              return `<span class="event-badge ${badgeClass} ${statusClass}" data-id="${event.id}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
+              return `<span class="event-badge ${badgeClass} ${statusClass} desktop-event-badge" data-id="${event.id}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
             }).join('')}
+            <div class="mobile-dots-row">
+              ${dayEvents.map(event => {
+                const dotColor = getEventBorderColor(event.interview_type);
+                return `<span class="mobile-dot" style="background-color: ${dotColor};" title="${event.company}"></span>`;
+              }).join('')}
+            </div>
           </div>
         </div>
       `;
@@ -4816,8 +4954,14 @@ async function renderInterviews() {
             ${dayEvents.map(event => {
               const badgeClass = getBadgeTypeClass(event.interview_type);
               const statusClass = event.status.toLowerCase();
-              return `<span class="event-badge ${badgeClass} ${statusClass}" data-id="${event.id}" title="${event.company} - ${event.interview_type}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
+              return `<span class="event-badge ${badgeClass} ${statusClass} desktop-event-badge" data-id="${event.id}" title="${event.company} - ${event.interview_type}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
             }).join('')}
+            <div class="mobile-dots-row">
+              ${dayEvents.map(event => {
+                const dotColor = getEventBorderColor(event.interview_type);
+                return `<span class="mobile-dot" style="background-color: ${dotColor};" title="${event.company}"></span>`;
+              }).join('')}
+            </div>
           </div>
         </div>
       `;
@@ -4839,8 +4983,14 @@ async function renderInterviews() {
             ${dayEvents.map(event => {
               const badgeClass = getBadgeTypeClass(event.interview_type);
               const statusClass = event.status.toLowerCase();
-              return `<span class="event-badge ${badgeClass} ${statusClass}" data-id="${event.id}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
+              return `<span class="event-badge ${badgeClass} ${statusClass} desktop-event-badge" data-id="${event.id}">${event.company} (${event.interview_type.split(' ')[0]})</span>`;
             }).join('')}
+            <div class="mobile-dots-row">
+              ${dayEvents.map(event => {
+                const dotColor = getEventBorderColor(event.interview_type);
+                return `<span class="mobile-dot" style="background-color: ${dotColor};" title="${event.company}"></span>`;
+              }).join('')}
+            </div>
           </div>
         </div>
       `;
@@ -4849,12 +4999,15 @@ async function renderInterviews() {
     html += `</div>`;
     mount.innerHTML = html;
 
-    // Attach cell click handler to open scheduling modal pre-filled
+    // Attach cell click handler to update selected date and reload schedule
     mount.querySelectorAll('.calendar-day-cell').forEach(cell => {
       cell.addEventListener('click', (e) => {
-        if (e.target.classList.contains('event-badge')) return;
+        if (e.target.closest('.desktop-event-badge') || e.target.closest('.mobile-dot')) return;
         const dateStr = cell.getAttribute('data-date');
-        openScheduleModal(null, dateStr);
+        if (dateStr) {
+          calendarSelectedDate = new Date(dateStr + 'T12:00:00');
+          loadAndRender();
+        }
       });
     });
 
