@@ -4005,130 +4005,125 @@ function renderSettings() {
   const simulateError = localStorage.getItem('applytrack_simulate_error') === 'true';
 
   root.innerHTML = `
-    <div class="dashboard-page-container">
-      <div class="app-container">
-        
-        <!-- Error Alert Banner -->
-        ${isError ? `
-          <div class="alert-banner danger">
-            <div class="alert-banner-content">
-              <i class="fas fa-exclamation-triangle" style="font-size: 1.2rem;"></i>
-              <span><strong>Gmail Sync Error:</strong> Your Gmail authorization has expired. Reconnect below.</span>
-            </div>
+    <div class="settings-page-container">
+      
+      <!-- Error Alert Banner -->
+      ${isError ? `
+        <div class="alert-banner danger" style="margin-bottom: 24px;">
+          <div class="alert-banner-content">
+            <i class="fas fa-exclamation-triangle" style="font-size: 1.2rem;"></i>
+            <span><strong>Gmail Sync Error:</strong> Your Gmail authorization has expired. Reconnect below.</span>
           </div>
-        ` : ''}
+        </div>
+      ` : ''}
 
-        <div class="dashboard-user-greeting" style="margin-bottom: 24px;">
-          <h1>Account Settings</h1>
-          <p>Configure notifications, integrations, and workspace preferences.</p>
+      <div style="margin-bottom: 32px;">
+        <h1 class="page-title" style="margin-bottom: 4px;">Account Settings</h1>
+        <p style="color: var(--color-text-secondary); font-size: 0.95rem;">Configure notifications, integrations, and workspace preferences.</p>
+      </div>
+
+      <!-- Horizontal settings tabs row -->
+      <div class="settings-tabs-row">
+        <button class="settings-tab-btn" id="settings-tab-profile">
+          <i class="fas fa-user"></i> General Profile
+        </button>
+        <button class="settings-tab-btn active" id="settings-tab-gmail">
+          <i class="fab fa-google" style="color:#3B82F6;"></i> Gmail Sync
+        </button>
+        <button class="settings-tab-btn" id="settings-tab-security">
+          <i class="fas fa-lock"></i> Security & Tokens
+        </button>
+      </div>
+
+      <!-- Main card -->
+      <div class="settings-card">
+        <h3 class="settings-card-title">Gmail Integration Settings</h3>
+
+        <!-- Sync Connection Status row -->
+        <div class="settings-item-row">
+          <div class="settings-item-info">
+            <span class="settings-item-label">Sync Connection Status</span>
+            <span class="settings-item-desc">Check if ApplyTrack is connected to Gmail to scan incoming job messages.</span>
+          </div>
+          <div>
+            ${isError ? `
+              <span class="badge-status disconnected-badge"><span style="width:8px; height:8px; border-radius:50%; background-color:#B91C1C; display:inline-block; margin-right:4px;"></span> Error</span>
+            ` : syncState ? `
+              <span class="badge-status connected-badge"><span style="width:8px; height:8px; border-radius:50%; background-color:#15803D; display:inline-block; margin-right:4px;"></span> Connected</span>
+            ` : `
+              <span class="badge-status disconnected-badge"><span style="width:8px; height:8px; border-radius:50%; background-color:#B91C1C; display:inline-block; margin-right:4px;"></span> Disconnected</span>
+            `}
+          </div>
         </div>
 
-        <div class="settings-grid">
-          <!-- Sidebar -->
-          <div class="settings-sidebar">
-            <button class="settings-menu-item" onclick="showToast('General Profile Settings are coming in Milestone 3', 'info')"><i class="fas fa-user"></i> General Profile</button>
-            <button class="settings-menu-item active"><i class="fab fa-google"></i> Gmail Sync</button>
-            <button class="settings-menu-item" onclick="showToast('Advanced Security settings are coming in Milestone 3', 'info')"><i class="fas fa-lock"></i> Security & Tokens</button>
+        <!-- Connected Google Account row -->
+        <div class="settings-item-row">
+          <div class="settings-item-info">
+            <span class="settings-item-label">Connected Google Account</span>
+            <span class="settings-item-desc">This account is used to authorize the scan job inbox readings.</span>
           </div>
+          <div style="font-weight: 700; color: var(--color-text);">
+            ${currentProfile?.gmail_connected ? currentUser.email : 'None'}
+          </div>
+        </div>
 
-          <!-- Main Content -->
-          <div class="settings-card">
-            <h3 class="settings-card-title">Gmail Integration Settings</h3>
+        <!-- Last Successful Sync row -->
+        <div class="settings-item-row">
+          <div class="settings-item-info">
+            <span class="settings-item-label">Last Successful Sync</span>
+            <span class="settings-item-desc">Timestamp showing when your inbox was scanned for confirmations.</span>
+          </div>
+          <div style="font-weight: 600; color: var(--color-text-secondary);" id="settings-last-synced">
+            ${lastSyncedText}
+          </div>
+        </div>
 
-            <!-- Connection Status row -->
-            <div class="settings-item-row">
-              <div class="settings-item-info">
-                <span class="settings-item-label">Sync Connection Status</span>
-                <span class="settings-item-desc">
-                  Check if ApplyTrack is connected to Gmail to scan incoming job messages.
-                </span>
-              </div>
-              <div>
-                ${isError ? `
-                  <span class="badge-status error"><i class="fas fa-exclamation-triangle"></i> Connection Error</span>
-                ` : syncState ? `
-                  <span class="badge-status connected"><i class="fas fa-check-circle"></i> Connected</span>
-                ` : `
-                  <span class="badge-status disconnected"><i class="fas fa-unlink"></i> Disconnected</span>
-                `}
-              </div>
-            </div>
+        <!-- Sync Actions row -->
+        <div class="settings-item-row">
+          <div class="settings-item-info">
+            <span class="settings-item-label">Sync Actions</span>
+            <span class="settings-item-desc">Disconnect access keys, re-verify scope permissions, or run a manual search query.</span>
+          </div>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            ${syncState ? `
+              <button id="settings-sync-btn" class="settings-action-btn"><i class="fas fa-sync-alt"></i> Sync Now</button>
+              <button id="settings-disconnect-btn" class="settings-action-btn disconnect"><i class="fas fa-times"></i> Disconnect</button>
+            ` : isError ? `
+              <button id="settings-reconnect-btn" class="settings-action-btn" style="border-color:var(--color-secondary); color:var(--color-secondary);"><i class="fas fa-sync-alt"></i> Reconnect Gmail</button>
+              <button id="settings-disconnect-btn" class="settings-action-btn disconnect"><i class="fas fa-times"></i> Disconnect</button>
+            ` : `
+              <button id="settings-connect-btn" class="settings-action-btn" style="border-color:var(--color-secondary); color:var(--color-secondary);"><i class="fab fa-google"></i> Connect Gmail</button>
+            `}
+          </div>
+        </div>
 
-            <!-- Account detail row -->
-            <div class="settings-item-row">
-              <div class="settings-item-info">
-                <span class="settings-item-label">Connected Google Account</span>
-                <span class="settings-item-desc">
-                  This account is used to authorize the scan job inbox readings.
-                </span>
-              </div>
-              <div style="font-weight: 600; color: var(--color-primary);">
-                ${currentProfile?.gmail_connected ? currentUser.email : 'None'}
-              </div>
-            </div>
-
-            <!-- Last Sync detail row -->
-            <div class="settings-item-row">
-              <div class="settings-item-info">
-                <span class="settings-item-label">Last Successful Sync</span>
-                <span class="settings-item-desc">
-                  Timestamp showing when your inbox was scanned for confirmations.
-                </span>
-              </div>
-              <div style="font-weight: 600; color: var(--color-text-secondary);" id="settings-last-synced">
-                ${lastSyncedText}
-              </div>
-            </div>
-
-            <!-- Actions row -->
-            <div class="settings-item-row">
-              <div class="settings-item-info">
-                <span class="settings-item-label">Sync Actions</span>
-                <span class="settings-item-desc">
-                  Disconnect access keys, re-verify scope permissions, or run a manual search query.
-                </span>
-              </div>
-              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                ${syncState ? `
-                  <button id="settings-sync-btn" class="btn btn-secondary btn-sm"><i class="fas fa-sync-alt"></i> Sync Now</button>
-                  <button id="settings-disconnect-btn" class="btn btn-outline btn-sm" style="color: var(--color-danger); border-color: rgba(239, 68, 68, 0.2);"><i class="fas fa-unlink"></i> Disconnect</button>
-                ` : isError ? `
-                  <button id="settings-reconnect-btn" class="btn btn-primary btn-sm"><i class="fas fa-sync-alt"></i> Reconnect Gmail</button>
-                  <button id="settings-disconnect-btn" class="btn btn-outline btn-sm" style="color: var(--color-danger); border-color: rgba(239, 68, 68, 0.2);"><i class="fas fa-unlink"></i> Disconnect</button>
-                ` : `
-                  <button id="settings-connect-btn" class="btn btn-primary btn-sm"><i class="fab fa-google"></i> Connect Gmail</button>
-                `}
-              </div>
-            </div>
-
-            <!-- Simulation panel for developers -->
-            <div style="margin-top: 40px; border-top: 2px dashed var(--color-border); padding-top: 32px;">
-              <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--color-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-flask" style="color: var(--color-secondary);"></i> Developer Testing Sandbox
-              </h4>
-              <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 24px; line-height: 1.4;">
-                Use these tools to simulate edge cases and evaluate the UI's reaction to API sync failures.
-              </p>
-              
-              <div class="settings-item-row" style="background-color: var(--color-bg); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-                <div class="settings-item-info">
-                  <span class="settings-item-label" style="font-size: 0.9rem;">Simulate Sync Error</span>
-                  <span class="settings-item-desc" style="font-size: 0.8rem; max-width: 320px;">
-                    Simulate an expired OAuth credentials token or connection failure. This triggers warnings on settings and dashboard.
-                  </span>
-                </div>
-                <div class="switch-container">
-                  <label class="switch">
-                    <input type="checkbox" id="simulate-error-switch" ${simulateError ? 'checked' : ''}>
-                    <span class="slider"></span>
-                  </label>
-                  <span style="font-size: 0.85rem; font-weight: 700; color: ${simulateError ? 'var(--color-danger)' : 'var(--color-text-secondary)'};" id="simulate-error-label">
-                    ${simulateError ? 'ERROR ACTIVE' : 'NORMAL'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
+        <!-- Simulation panel for developers -->
+        <div class="sandbox-divider"></div>
+        
+        <div style="margin-bottom: 24px;">
+          <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--color-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-flask" style="color: var(--color-secondary);"></i> Developer Testing Sandbox
+          </h4>
+          <p style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.4;">
+            Use these tools to simulate edge cases and evaluate the UI's reaction to API sync failures.
+          </p>
+        </div>
+        
+        <div class="sandbox-card">
+          <div class="settings-item-info">
+            <span class="settings-item-label" style="font-size: 0.95rem;">Simulate Sync Error</span>
+            <span class="settings-item-desc" style="font-size: 0.82rem; max-width: 480px;">
+              Simulate an expired OAuth credentials token or connection failure. This triggers warnings on settings and dashboard.
+            </span>
+          </div>
+          <div class="switch-container" style="display: flex; align-items: center; gap: 12px;">
+            <label class="switch">
+              <input type="checkbox" id="simulate-error-switch" ${simulateError ? 'checked' : ''}>
+              <span class="slider"></span>
+            </label>
+            <span style="font-size: 0.85rem; font-weight: 700; color: ${simulateError ? 'var(--color-danger)' : 'var(--color-text-secondary)'}; min-width: 80px;" id="simulate-error-label">
+              ${simulateError ? 'ERROR ACTIVE' : 'NORMAL'}
+            </span>
           </div>
         </div>
 
@@ -4141,6 +4136,13 @@ function renderSettings() {
   document.getElementById('settings-reconnect-btn')?.addEventListener('click', handleSettingsConnect);
   document.getElementById('settings-disconnect-btn')?.addEventListener('click', handleSettingsDisconnect);
   
+  document.getElementById('settings-tab-profile')?.addEventListener('click', () => {
+    showToast('General Profile Settings are coming in Milestone 3', 'info');
+  });
+  document.getElementById('settings-tab-security')?.addEventListener('click', () => {
+    showToast('Advanced Security settings are coming in Milestone 3', 'info');
+  });
+
   document.getElementById('settings-sync-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('settings-sync-btn');
     const oldText = btn.innerHTML;

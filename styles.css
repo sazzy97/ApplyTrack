@@ -4005,6 +4005,185 @@ input:checked + .slider:before {
   color: var(--color-text-secondary);
 }
 
+/* ==========================================================================
+   REDESIGNED SETTINGS SCREEN STYLES
+   ========================================================================== */
+
+.settings-page-container {
+  margin: -40px;
+  padding: 32px;
+  background-color: var(--color-bg);
+  min-height: calc(100vh - 80px);
+}
+
+@media (max-width: 768px) {
+  .settings-page-container {
+    margin: -24px -16px;
+    padding: 16px;
+  }
+}
+
+.settings-tabs-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.settings-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #F5F4EE; /* light grey/beige */
+  border: 1px solid transparent;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-tab-btn:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text);
+}
+
+.settings-tab-btn.active {
+  background-color: #FFFFFF;
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-tab-btn.active i {
+  color: var(--color-secondary);
+}
+
+/* Settings main card adjustments */
+.settings-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-card-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-bottom: 24px;
+}
+
+.settings-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--color-border);
+  gap: 24px;
+}
+
+.settings-item-row:last-of-type {
+  border-bottom: none;
+}
+
+.settings-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+.settings-item-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.settings-item-desc {
+  font-size: 0.84rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  max-width: 480px;
+}
+
+/* Badges */
+.badge-status.connected-badge {
+  background-color: #DCFCE7;
+  color: #15803D;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-status.disconnected-badge {
+  background-color: #FEE2E2;
+  color: #B91C1C;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Action buttons */
+.settings-action-btn {
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.settings-action-btn:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-hover);
+}
+
+.settings-action-btn.disconnect {
+  border-color: #FEE2E2;
+  color: #EF4444;
+}
+
+.settings-action-btn.disconnect:hover {
+  background-color: #FEF2F2;
+  border-color: #FCA5A5;
+}
+
+.sandbox-divider {
+  border-top: 1px dashed var(--color-border);
+  margin: 32px 0;
+}
+
+.sandbox-card {
+  background-color: #F8FAFC;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
 
 
 
