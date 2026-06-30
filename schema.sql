@@ -206,3 +206,29 @@ CREATE POLICY "Allow individual update access to own interviews"
 CREATE POLICY "Allow individual delete access to own interviews"
   ON public.interviews FOR DELETE
   USING (auth.uid() = user_id);
+
+-- Create saved_views table to store custom user views
+CREATE TABLE IF NOT EXISTS public.saved_views (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  filters JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  CONSTRAINT unique_user_view_name UNIQUE (user_id, name)
+);
+
+-- Enable Row Level Security (RLS) on saved_views
+ALTER TABLE public.saved_views ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for saved_views access
+CREATE POLICY "Allow individual read access to own saved views"
+  ON public.saved_views FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual insert access to own saved views"
+  ON public.saved_views FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual delete access to own saved views"
+  ON public.saved_views FOR DELETE
+  USING (auth.uid() = user_id);

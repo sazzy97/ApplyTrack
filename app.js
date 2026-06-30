@@ -2655,11 +2655,398 @@ function getAvatarColor(char) {
   return colors[index];
 }
 
-// 6. DASHBOARD PAGE
+/* ==========================================================================
+   MILESTONE 7: ADVANCED SEARCH, FILTERING & SAVED VIEWS HELPERS & CONNECTORS
+   ========================================================================== */
+
+function parseJobDate(job) {
+  if (!job || !job.date) return new Date();
+  
+  const d = new Date(job.date);
+  if (!isNaN(d.getTime())) return d;
+  
+  const daysAgoMatch = String(job.date).match(/(\d+)\s+days?\s+ago/i);
+  if (daysAgoMatch) {
+    const days = parseInt(daysAgoMatch[1], 10);
+    return new Date(Date.now() - days * 24 * 3600 * 1000);
+  }
+  
+  const months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const lowerDate = String(job.date).toLowerCase();
+  for (const month of months) {
+    if (lowerDate.includes(month)) {
+      const dayMatch = lowerDate.match(/\d+/);
+      if (dayMatch) {
+        const day = parseInt(dayMatch[0], 10);
+        const currentYear = new Date().getFullYear();
+        const testD = new Date(`${month} ${day}, ${currentYear}`);
+        if (!isNaN(testD.getTime())) return testD;
+      }
+    }
+  }
+  
+  if (job.activities && job.activities.length > 0) {
+    const actDate = new Date(job.activities[0].created_at);
+    if (!isNaN(actDate.getTime())) return actDate;
+  }
+  
+  return new Date();
+}
+
+function parseSalary(salaryStr) {
+  if (!salaryStr) return { min: 0, max: 0 };
+  const clean = salaryStr.toLowerCase().replace(/,/g, '');
+  const matches = clean.match(/\d+\s*k\b|\d+/g);
+  
+  if (!matches || matches.length === 0) return { min: 0, max: 0 };
+  
+  const parseVal = (str) => {
+    let val = parseFloat(str);
+    if (str.includes('k')) val *= 1000;
+    return val;
+  };
+  
+  const values = matches.map(parseVal);
+  if (values.length === 1) {
+    return { min: values[0], max: values[0] };
+  }
+  return { min: Math.min(...values), max: Math.max(...values) };
+}
+
+function isInterviewThisWeek(intObj) {
+  if (!intObj || !intObj.date) return false;
+  const intDate = new Date(intObj.date);
+  if (isNaN(intDate.getTime())) return false;
+  
+  const today = new Date();
+  const sun = new Date(today);
+  sun.setDate(today.getDate() - today.getDay());
+  sun.setHours(0, 0, 0, 0);
+  
+  const sat = new Date(sun);
+  sat.setDate(sun.getDate() + 6);
+  sat.setHours(23, 59, 59, 999);
+  
+  return intDate >= sun && intDate <= sat;
+}
+
+async function fetchSavedViews() {
+  const systemViews = [
+    {
+      id: 'sys-remote',
+      name: 'Remote Roles',
+      isSystem: true,
+      filters: { search: '', statuses: [], dateApplied: 'all', platforms: [], salaryMin: '', salaryMax: '', locationTypes: ['remote'], sortBy: 'recent' }
+    },
+    {
+      id: 'sys-design',
+      name: 'Product Designer Jobs',
+      isSystem: true,
+      filters: { search: 'Product Designer', statuses: [], dateApplied: 'all', platforms: [], salaryMin: '', salaryMax: '', locationTypes: [], sortBy: 'recent' }
+    },
+    {
+      id: 'sys-waiting',
+      name: 'Waiting for Response',
+      isSystem: true,
+      filters: { search: '', statuses: ['applied'], dateApplied: 'older_7_days', platforms: [], salaryMin: '', salaryMax: '', locationTypes: [], sortBy: 'recent' }
+    },
+    {
+      id: 'sys-interviews',
+      name: 'Interviews This Week',
+      isSystem: true,
+      filters: { search: '', statuses: [], dateApplied: 'all', platforms: [], salaryMin: '', salaryMax: '', locationTypes: [], sortBy: 'recent', hasInterviewsThisWeek: true }
+    }
+  ];
+
+  if (window.USE_MOCK_AUTH) {
+    const list = JSON.parse(localStorage.getItem('applytrack_saved_views') || '[]');
+    if (list.length === 0) {
+      localStorage.setItem('applytrack_saved_views', JSON.stringify(systemViews));
+      return systemViews;
+    }
+    const customOnly = list.filter(v => !v.isSystem);
+    return [...systemViews, ...customOnly];
+  } else {
+    const { data, error } = await supabaseClient
+      .from('saved_views')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return [...systemViews, ...(data || [])];
+  }
+}
+
+async function createSavedView(name, filters) {
+  if (!name.trim()) throw new Error("View name cannot be empty");
+  
+  if (window.USE_MOCK_AUTH) {
+    const list = JSON.parse(localStorage.getItem('applytrack_saved_views') || '[]');
+    if (list.some(v => v.name.toLowerCase() === name.trim().toLowerCase())) {
+      throw new Error("A view with this name already exists");
+    }
+    const newView = {
+      id: 'mock-' + Math.random().toString(36).substr(2, 9),
+      name: name.trim(),
+      filters,
+      created_at: new Date().toISOString()
+    };
+    list.push(newView);
+    localStorage.setItem('applytrack_saved_views', JSON.stringify(list));
+    return newView;
+  } else {
+    const { data, error } = await supabaseClient
+      .from('saved_views')
+      .insert([{
+        user_id: currentUser.id,
+        name: name.trim(),
+        filters: filters
+      }])
+      .select();
+    if (error) {
+      if (error.code === '23505') throw new Error("A view with this name already exists");
+      throw error;
+    }
+    return data[0];
+  }
+}
+
+async function deleteSavedView(id) {
+  if (String(id).startsWith('sys-')) {
+    throw new Error("System views cannot be deleted");
+  }
+  if (window.USE_MOCK_AUTH) {
+    let list = JSON.parse(localStorage.getItem('applytrack_saved_views') || '[]');
+    list = list.filter(v => String(v.id) !== String(id));
+    localStorage.setItem('applytrack_saved_views', JSON.stringify(list));
+    return true;
+  } else {
+    const { error } = await supabaseClient
+      .from('saved_views')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  }
+}
+
+async function renderSavedViewsUI() {
+  const sidebarList = document.getElementById('sidebar-saved-views-list');
+  const mobileList = document.getElementById('mobile-saved-views-list');
+  
+  if (!sidebarList && !mobileList) return;
+  
+  try {
+    const list = await fetchSavedViews();
+    
+    // Draw Sidebar
+    if (sidebarList) {
+      sidebarList.innerHTML = list.map(v => {
+        const isActive = String(dashboardActiveSavedView) === String(v.id);
+        return `
+          <div class="saved-view-item ${isActive ? 'active' : ''}" data-id="${v.id}">
+            <a class="saved-view-link" data-id="${v.id}">
+              <i class="fas ${v.isSystem ? 'fa-th-list' : 'fa-bookmark'}"></i>
+              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${v.name}</span>
+            </a>
+            ${v.isSystem ? '' : `
+              <button class="saved-view-delete-btn" data-id="${v.id}" title="Delete Saved View">
+                <i class="far fa-trash-alt"></i>
+              </button>
+            `}
+          </div>
+        `;
+      }).join('');
+      
+      // Sidebar click listeners
+      sidebarList.querySelectorAll('.saved-view-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const viewId = link.getAttribute('data-id');
+          const matched = list.find(v => String(v.id) === String(viewId));
+          if (matched) applySavedView(matched);
+        });
+      });
+      
+      sidebarList.querySelectorAll('.saved-view-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const viewId = btn.getAttribute('data-id');
+          if (confirm("Are you sure you want to delete this saved view?")) {
+            try {
+              await deleteSavedView(viewId);
+              showToast("Saved view deleted", "success");
+              if (String(dashboardActiveSavedView) === String(viewId)) {
+                dashboardActiveSavedView = null;
+              }
+              renderSavedViewsUI();
+              if (window.location.hash === '#/dashboard') {
+                renderDashboard();
+              }
+            } catch (err) {
+              showToast(err.message, "error");
+            }
+          }
+        });
+      });
+    }
+    
+    // Draw Mobile Subbar
+    if (mobileList) {
+      mobileList.innerHTML = list.map(v => {
+        const isActive = String(dashboardActiveSavedView) === String(v.id);
+        return `
+          <div class="mobile-view-chip ${isActive ? 'active' : ''}" data-id="${v.id}">
+            <i class="fas ${v.isSystem ? 'fa-th-list' : 'fa-bookmark'}"></i>
+            <span>${v.name}</span>
+          </div>
+        `;
+      }).join('');
+      
+      // Mobile click listeners
+      mobileList.querySelectorAll('.mobile-view-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const viewId = chip.getAttribute('data-id');
+          const matched = list.find(v => String(v.id) === String(viewId));
+          if (matched) applySavedView(matched);
+        });
+      });
+    }
+  } catch (err) {
+    console.error("Failed to render saved views:", err);
+  }
+}
+
+function applySavedView(view) {
+  dashboardActiveSavedView = view.id;
+  const f = view.filters;
+  
+  // Unpack filters
+  dashboardSearchQuery = f.search || "";
+  dashboardFilterStatuses = f.statuses || [];
+  dashboardFilterDateApplied = f.dateApplied || "all";
+  dashboardFilterPlatforms = f.platforms || [];
+  dashboardFilterSalaryMin = f.salaryMin || "";
+  dashboardFilterSalaryMax = f.salaryMax || "";
+  dashboardFilterLocationTypes = f.locationTypes || [];
+  dashboardSortBy = f.sortBy || "recent";
+  dashboardHasInterviewsThisWeek = !!f.hasInterviewsThisWeek;
+  
+  // Refit quick status filter
+  if (dashboardFilterStatuses.length === 1) {
+    dashboardStatusFilter = dashboardFilterStatuses[0];
+  } else {
+    dashboardStatusFilter = "all";
+  }
+  
+  if (window.location.hash !== '#/dashboard') {
+    navigate('#/dashboard');
+  } else {
+    const searchInput = document.getElementById('dashboard-search');
+    if (searchInput) searchInput.value = dashboardSearchQuery;
+    
+    document.querySelectorAll('.filter-pills-row .filter-pill').forEach(pill => {
+      const pillFilter = pill.getAttribute('data-filter');
+      if (pillFilter === dashboardStatusFilter) {
+        pill.classList.add('active');
+      } else {
+        pill.classList.remove('active');
+      }
+    });
+
+    renderDashboard();
+  }
+}
+
+function clearActiveSavedView() {
+  if (dashboardActiveSavedView !== null) {
+    dashboardActiveSavedView = null;
+    document.querySelectorAll('.saved-view-item, .mobile-view-chip').forEach(item => {
+      item.classList.remove('active');
+    });
+  }
+}
+
+function openSaveViewModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-container" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--color-primary);">
+          <i class="far fa-bookmark"></i> Save Current View
+        </h3>
+        <button class="btn-close-modal" id="modal-close-save-btn"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 20px; display:flex; flex-direction:column; gap:16px;">
+        <div class="edit-form-group">
+          <label style="font-size: 0.72rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase;">View Name</label>
+          <input type="text" id="save-view-name-input" class="detail-input" placeholder="e.g. Remote Design Jobs" style="width: 100%;">
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 12px 20px; display:flex; justify-content:flex-end; gap:10px;">
+        <button id="modal-cancel-save-btn" class="btn btn-secondary btn-sm">Cancel</button>
+        <button id="modal-submit-save-btn" class="btn btn-primary btn-sm">Save View</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  const close = () => modal.remove();
+  document.getElementById('modal-close-save-btn').addEventListener('click', close);
+  document.getElementById('modal-cancel-save-btn').addEventListener('click', close);
+  
+  const submitBtn = document.getElementById('modal-submit-save-btn');
+  const nameInput = document.getElementById('save-view-name-input');
+  
+  nameInput.focus();
+  
+  const saveAction = async () => {
+    const name = nameInput.value.trim();
+    if (!name) {
+      showToast("Please enter a name for this view.", "error");
+      return;
+    }
+    
+    submitBtn.disabled = true;
+    
+    const filters = {
+      search: dashboardSearchQuery,
+      statuses: dashboardFilterStatuses,
+      dateApplied: dashboardFilterDateApplied,
+      platforms: dashboardFilterPlatforms,
+      salaryMin: dashboardFilterSalaryMin,
+      salaryMax: dashboardFilterSalaryMax,
+      locationTypes: dashboardFilterLocationTypes,
+      sortBy: dashboardSortBy,
+      hasInterviewsThisWeek: !!dashboardHasInterviewsThisWeek
+    };
+    
+    try {
+      const newView = await createSavedView(name, filters);
+      showToast("View saved successfully!", "success");
+      dashboardActiveSavedView = newView.id;
+      close();
+      renderSavedViewsUI();
+      renderDashboard();
+    } catch (err) {
+      submitBtn.disabled = false;
+      showToast(err.message, "error");
+    }
+  };
+  
+  submitBtn.addEventListener('click', saveAction);
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveAction();
+  });
+}
+
+/* ==========================================================================
+   DASHBOARD CONTROLLER
+   ========================================================================== */
+
 async function renderDashboard() {
   const root = getAppViewRoot();
   
-  // Show spinner loading state first
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
       <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary);"></i>
@@ -2668,15 +3055,25 @@ async function renderDashboard() {
   `;
 
   try {
-    // Fetch mock/real jobs asynchronously
-    const mockJobs = await fetchJobs();
+    const [mockJobs, interviews] = await Promise.all([
+      fetchJobs(),
+      fetchInterviews()
+    ]);
 
-    // Read States
+    let allNotes = [];
+    if (!window.USE_MOCK_AUTH) {
+      try {
+        const { data: notesData } = await supabaseClient.from('job_notes').select('*');
+        allNotes = notesData || [];
+      } catch (notesErr) {
+        console.error("Failed to load notes for search indexing:", notesErr);
+      }
+    }
+
     const isError = localStorage.getItem('applytrack_simulate_error') === 'true' || currentProfile?.sync_error;
     const syncState = currentProfile?.gmail_connected && !isError;
     const lastSyncedText = currentProfile?.last_synced ? getRelativeTimeString(currentProfile.last_synced) : 'Never';
 
-    // If no jobs exist at all: render the onboarding link / Gmail empty state!
     if (mockJobs.length === 0) {
       root.innerHTML = `
         <div class="dashboard-page-container" style="display: flex; align-items: center; justify-content: center; min-height: 70vh;">
@@ -2686,7 +3083,7 @@ async function renderDashboard() {
             </div>
             <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 12px;">Connect Gmail to start tracking</h2>
             <p style="color: var(--color-text-secondary); margin-bottom: 32px; line-height: 1.5; font-size: 0.95rem;">
-              ApplyTrack can automatically scan your inbox to detect and organize application confirmations, interview invites, assessments, offers, and rejections.
+              ApplyTrack can organize application confirmations, interview invites, assessments, offers, and rejections automatically from your inbox.
             </p>
             <button id="dashboard-connect-btn" class="btn btn-primary btn-lg" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
               <i class="fab fa-google"></i> Connect Gmail Account
@@ -2701,7 +3098,7 @@ async function renderDashboard() {
       return;
     }
 
-    // 1. Calculate Metrics Counts
+    // Dynamic stats mapping
     const totalCount = mockJobs.length;
     const appliedCount = mockJobs.filter(j => j.status === 'applied').length;
     const interviewCount = mockJobs.filter(j => j.status === 'interview').length;
@@ -2709,7 +3106,9 @@ async function renderDashboard() {
     const offerCount = mockJobs.filter(j => j.status === 'offer').length;
     const rejectedCount = mockJobs.filter(j => j.status === 'rejected').length;
 
-    // 2. Render Main Layout Shell
+    // Dynamically fetch unique platforms
+    const uniquePlatforms = [...new Set(mockJobs.map(j => j.source).filter(Boolean))];
+
     root.innerHTML = `
       <div class="dashboard-page-container">
         
@@ -2718,7 +3117,7 @@ async function renderDashboard() {
           <div class="alert-banner danger">
             <div class="alert-banner-content">
               <i class="fas fa-exclamation-triangle" style="font-size: 1.2rem;"></i>
-              <span><strong>Gmail Sync Error:</strong> Your Gmail authorization has expired or was revoked. Reconnect in Settings.</span>
+              <span><strong>Gmail Sync Error:</strong> Your Gmail authorization has expired. Reconnect in Settings.</span>
             </div>
             <a href="#/settings" class="btn btn-secondary btn-sm" style="color: var(--color-danger); border-color: rgba(239, 68, 68, 0.3); background-color: #FFFFFF;">
               Reconnect Gmail
@@ -2726,75 +3125,36 @@ async function renderDashboard() {
           </div>
         ` : ''}
 
-        <!-- Header Profile Banner -->
-        <div class="dashboard-header-row" style="margin-bottom: 32px;">
-          <div class="dashboard-user-greeting">
-            <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary);">Welcome Back, ${currentProfile?.full_name || 'Job Seeker'}!</h1>
-            <p style="color: var(--color-text-secondary); margin-top: 4px;">Track and manage your career applications pipeline.</p>
-          </div>
-          
-          <div class="dashboard-actions-header" style="display: flex; gap: 12px; align-items: center;">
-            <div class="sync-status-indicator" style="font-size: 0.85rem; display: flex; align-items: center; gap: 8px; margin-right: 8px;">
-              ${isError ? `
-                <span class="badge-status error"><i class="fas fa-exclamation-triangle"></i> Sync Error</span>
-              ` : syncState ? `
-                <span class="badge-status connected"><i class="fas fa-check-circle"></i> Sync Connected</span>
-                <span style="color: var(--color-text-secondary); font-size: 0.8rem; display: inline-block;">Last Synced: <strong id="last-synced-time">${lastSyncedText}</strong></span>
-              ` : `
-                <span class="badge-status disconnected"><i class="fas fa-unlink"></i> Sync Inactive</span>
-              `}
-            </div>
-            
-            ${syncState ? `
-              <button id="sync-inbox-btn" class="btn btn-secondary">
-                <i class="fas fa-sync-alt"></i> Sync Inbox Now
-              </button>
-            ` : isError ? `
-              <a href="#/settings" class="btn btn-primary" style="background-color: var(--color-danger); border-color: var(--color-danger); color: #FFFFFF;">
-                <i class="fas fa-exclamation-triangle"></i> Reconnect Gmail
-              </a>
-            ` : `
-              <a href="#/onboarding" class="btn btn-primary" style="background-color: var(--color-warning); border-color: var(--color-warning); color: var(--color-primary); display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-exclamation-triangle"></i> Link Gmail Account
-              </a>
-            `}
-          </div>
-        </div>
-
-        <!-- Redesigned Metrics cards row (5 Items) -->
+        <!-- Metrics cards row -->
         <div class="dashboard-stats-5">
           <div class="stat-card" style="border-bottom: 3px solid var(--color-secondary);">
             <div class="stat-icon total"><i class="fas fa-briefcase"></i></div>
             <div class="stat-info">
               <span class="stat-num">${appliedCount}</span>
-              <span class="stat-label">Applications</span>
+              <span class="stat-label">Applied</span>
             </div>
           </div>
-          
           <div class="stat-card" style="border-bottom: 3px solid var(--color-warning);">
             <div class="stat-icon assessment"><i class="fas fa-file-code"></i></div>
             <div class="stat-info">
               <span class="stat-num">${assessmentCount}</span>
-              <span class="stat-label">Assessments</span>
+              <span class="stat-label">Assessment</span>
             </div>
           </div>
-
           <div class="stat-card" style="border-bottom: 3px solid #8B5CF6;">
-            <div class="stat-icon interviews" style="background-color: rgba(139, 92, 246, 0.1); color: #8B5CF6;"><i class="fas fa-video"></i></div>
+            <div class="stat-icon interviews"><i class="fas fa-video"></i></div>
             <div class="stat-info">
               <span class="stat-num">${interviewCount}</span>
-              <span class="stat-label">Interviews</span>
+              <span class="stat-label">Interview</span>
             </div>
           </div>
-          
           <div class="stat-card" style="border-bottom: 3px solid var(--color-success);">
             <div class="stat-icon offers"><i class="fas fa-trophy"></i></div>
             <div class="stat-info">
               <span class="stat-num">${offerCount}</span>
-              <span class="stat-label">Offers</span>
+              <span class="stat-label">Offer</span>
             </div>
           </div>
-          
           <div class="stat-card" style="border-bottom: 3px solid var(--color-danger);">
             <div class="stat-icon rejections"><i class="fas fa-times-circle"></i></div>
             <div class="stat-info">
@@ -2804,17 +3164,17 @@ async function renderDashboard() {
           </div>
         </div>
 
-        <!-- Dashboard Control Bar (Search, Status Filter, Layout Toggle) -->
+        <!-- Mobile Scrollable Saved Views Row -->
+        <div class="mobile-saved-views-wrapper" id="mobile-saved-views-list"></div>
+
+        <!-- Dashboard Control Bar -->
         <div class="dashboard-controls-row">
-          <!-- Search input -->
           <div class="search-wrapper">
             <i class="fas fa-search"></i>
-            <input type="text" id="dashboard-search" class="search-input" placeholder="Search by Company, Role, Recruiter..." value="${dashboardSearchQuery}">
+            <input type="text" id="dashboard-search" class="search-input" placeholder="Search by Company, Role, Recruiter or Notes..." value="${dashboardSearchQuery}">
           </div>
           
-          <!-- Filters & Layout Toggle wrapper -->
           <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-            <!-- Filter Pills -->
             <div class="filter-pills-row">
               <button class="filter-pill ${dashboardStatusFilter === 'all' ? 'active' : ''}" data-filter="all">All (${totalCount})</button>
               <button class="filter-pill ${dashboardStatusFilter === 'applied' ? 'active' : ''}" data-filter="applied">Applied (${appliedCount})</button>
@@ -2824,7 +3184,10 @@ async function renderDashboard() {
               <button class="filter-pill ${dashboardStatusFilter === 'rejected' ? 'active' : ''}" data-filter="rejected">Rejected (${rejectedCount})</button>
             </div>
             
-            <!-- Table vs Kanban Toggle -->
+            <button id="toggle-filters-btn" class="btn-filters-toggle ${dashboardFilterOpen ? 'active' : ''}">
+              <i class="fas fa-sliders-h"></i> Filters
+            </button>
+
             <div class="view-toggle-container">
               <button class="view-toggle-btn ${dashboardActiveView === 'table' ? 'active' : ''}" data-view="table" title="Table View">
                 <i class="fas fa-list"></i> Table
@@ -2836,34 +3199,234 @@ async function renderDashboard() {
           </div>
         </div>
 
+        <!-- Expandable Advanced Filters Drawer -->
+        <div class="advanced-filters-panel ${dashboardFilterOpen ? 'open' : ''}" id="advanced-filters-section">
+          <div class="filters-grid">
+            
+            <!-- Work Style -->
+            <div class="filter-column">
+              <div class="filter-column-title">Work Style</div>
+              <div class="filter-options-list">
+                <label class="filter-checkbox-label">
+                  <input type="checkbox" value="remote" class="filter-loc-type" ${dashboardFilterLocationTypes.includes('remote') ? 'checked' : ''}> Remote
+                </label>
+                <label class="filter-checkbox-label">
+                  <input type="checkbox" value="hybrid" class="filter-loc-type" ${dashboardFilterLocationTypes.includes('hybrid') ? 'checked' : ''}> Hybrid
+                </label>
+                <label class="filter-checkbox-label">
+                  <input type="checkbox" value="onsite" class="filter-loc-type" ${dashboardFilterLocationTypes.includes('onsite') ? 'checked' : ''}> On-site
+                </label>
+              </div>
+            </div>
+            
+            <!-- Source Platforms -->
+            <div class="filter-column">
+              <div class="filter-column-title">Source Platform</div>
+              <div class="filter-options-list" id="filter-platforms-list">
+                ${uniquePlatforms.map(platform => `
+                  <label class="filter-checkbox-label">
+                    <input type="checkbox" value="${platform}" class="filter-platform" ${dashboardFilterPlatforms.includes(platform) ? 'checked' : ''}> ${platform}
+                  </label>
+                `).join('') || '<span style="color:var(--color-text-secondary); font-size:0.8rem; font-style:italic;">No platforms found</span>'}
+              </div>
+            </div>
+            
+            <!-- Date Applied -->
+            <div class="filter-column">
+              <div class="filter-column-title">Date Applied</div>
+              <select id="filter-date-applied" class="salary-select-input">
+                <option value="all" ${dashboardFilterDateApplied === 'all' ? 'selected' : ''}>Anytime</option>
+                <option value="today" ${dashboardFilterDateApplied === 'today' ? 'selected' : ''}>Today</option>
+                <option value="week" ${dashboardFilterDateApplied === 'week' ? 'selected' : ''}>Past 7 days</option>
+                <option value="month" ${dashboardFilterDateApplied === 'month' ? 'selected' : ''}>Past 30 days</option>
+                <option value="older" ${dashboardFilterDateApplied === 'older' ? 'selected' : ''}>Older than 30 days</option>
+              </select>
+            </div>
+            
+            <!-- Salary Target -->
+            <div class="filter-column">
+              <div class="filter-column-title">Min/Max Salary</div>
+              <div class="salary-inputs-row">
+                <select id="filter-salary-min" class="salary-select-input">
+                  <option value="">Min ($)</option>
+                  <option value="80000" ${dashboardFilterSalaryMin === '80000' ? 'selected' : ''}>$80k</option>
+                  <option value="100000" ${dashboardFilterSalaryMin === '100000' ? 'selected' : ''}>$100k</option>
+                  <option value="120000" ${dashboardFilterSalaryMin === '120000' ? 'selected' : ''}>$120k</option>
+                  <option value="140000" ${dashboardFilterSalaryMin === '140000' ? 'selected' : ''}>$140k</option>
+                  <option value="160000" ${dashboardFilterSalaryMin === '160000' ? 'selected' : ''}>$160k</option>
+                  <option value="180000" ${dashboardFilterSalaryMin === '180000' ? 'selected' : ''}>$180k</option>
+                </select>
+                <select id="filter-salary-max" class="salary-select-input">
+                  <option value="">Max ($)</option>
+                  <option value="100000" ${dashboardFilterSalaryMax === '100000' ? 'selected' : ''}>$100k</option>
+                  <option value="120000" ${dashboardFilterSalaryMax === '120000' ? 'selected' : ''}>$120k</option>
+                  <option value="140000" ${dashboardFilterSalaryMax === '140000' ? 'selected' : ''}>$140k</option>
+                  <option value="160000" ${dashboardFilterSalaryMax === '160000' ? 'selected' : ''}>$160k</option>
+                  <option value="180000" ${dashboardFilterSalaryMax === '180000' ? 'selected' : ''}>$180k</option>
+                  <option value="220000" ${dashboardFilterSalaryMax === '220000' ? 'selected' : ''}>$220k+</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Sort By selection -->
+            <div class="filter-column">
+              <div class="filter-column-title">Sort By</div>
+              <select id="filter-sort-by" class="salary-select-input">
+                <option value="recent" ${dashboardSortBy === 'recent' ? 'selected' : ''}>Most Recent</option>
+                <option value="oldest" ${dashboardSortBy === 'oldest' ? 'selected' : ''}>Oldest</option>
+                <option value="salary" ${dashboardSortBy === 'salary' ? 'selected' : ''}>Highest Salary</option>
+                <option value="interview" ${dashboardSortBy === 'interview' ? 'selected' : ''}>Interview Stage</option>
+                <option value="offer" ${dashboardSortBy === 'offer' ? 'selected' : ''}>Offer Stage</option>
+              </select>
+            </div>
+            
+          </div>
+          
+          <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid var(--color-border); padding-top:16px;">
+            <button id="btn-save-current-view" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:6px;">
+              <i class="far fa-bookmark"></i> Save Current View
+            </button>
+            <button id="btn-clear-all-filters" class="btn btn-outline btn-sm" style="color:var(--color-danger); border-color:transparent;">
+              Clear All Filters
+            </button>
+          </div>
+        </div>
+
         <!-- Primary View Target Mount Area -->
         <div id="dashboard-view-target"></div>
       </div>
     `;
 
-    // 3. Define list filter and render logic
     const filterAndRender = () => {
       let filtered = [...mockJobs];
       
-      // Apply status filter
+      // 1. Status Quick Filter
       if (dashboardStatusFilter !== 'all') {
         filtered = filtered.filter(j => j.status === dashboardStatusFilter);
       }
       
-      // Apply search query
-      if (dashboardSearchQuery) {
-        filtered = filtered.filter(j => 
-          j.company.toLowerCase().includes(dashboardSearchQuery) ||
-          j.role.toLowerCase().includes(dashboardSearchQuery) ||
-          (j.recruiter_email && j.recruiter_email.toLowerCase().includes(dashboardSearchQuery))
-        );
+      // 2. Status Advanced Checkbox Filter (if any are saved in custom views)
+      if (dashboardFilterStatuses.length > 0) {
+        filtered = filtered.filter(j => dashboardFilterStatuses.includes(j.status));
       }
       
+      // 3. Global Multi-field Search
+      if (dashboardSearchQuery) {
+        const query = dashboardSearchQuery.toLowerCase().trim();
+        filtered = filtered.filter(j => {
+          const matchCompany = j.company && j.company.toLowerCase().includes(query);
+          const matchRole = j.role && j.role.toLowerCase().includes(query);
+          const matchRecruiterEmail = j.recruiter_email && j.recruiter_email.toLowerCase().includes(query);
+          const matchRecruiterName = j.recruiter_name && j.recruiter_name.toLowerCase().includes(query);
+          
+          let matchNotes = false;
+          if (window.USE_MOCK_AUTH) {
+            matchNotes = (j.notes || []).some(n => n.content && n.content.toLowerCase().includes(query));
+          } else {
+            matchNotes = allNotes.some(n => String(n.job_id) === String(j.id) && n.content && n.content.toLowerCase().includes(query));
+          }
+          
+          return matchCompany || matchRole || matchRecruiterEmail || matchRecruiterName || matchNotes;
+        });
+      }
+
+      // 4. Date Applied Filters
+      if (dashboardFilterDateApplied !== 'all') {
+        const now = new Date();
+        filtered = filtered.filter(j => {
+          const jDate = parseJobDate(j);
+          const diffMs = now - jDate;
+          const diffDays = Math.floor(diffMs / (24 * 3600 * 1000));
+          
+          if (dashboardFilterDateApplied === 'today') return diffDays <= 0;
+          if (dashboardFilterDateApplied === 'week') return diffDays <= 7;
+          if (dashboardFilterDateApplied === 'month') return diffDays <= 30;
+          if (dashboardFilterDateApplied === 'older') return diffDays > 30;
+          if (dashboardFilterDateApplied === 'older_7_days') return diffDays > 7;
+          return true;
+        });
+      }
+
+      // 5. Work Style Locations Filter
+      if (dashboardFilterLocationTypes.length > 0) {
+        filtered = filtered.filter(j => {
+          if (!j.location) return false;
+          const locLower = j.location.toLowerCase();
+          const isRemote = locLower.includes('remote');
+          const isHybrid = locLower.includes('hybrid');
+          const isOnsite = locLower.includes('on-site') || locLower.includes('onsite') || (!isRemote && !isHybrid);
+          
+          const types = [];
+          if (isRemote) types.push('remote');
+          if (isHybrid) types.push('hybrid');
+          if (isOnsite) types.push('onsite');
+          
+          return dashboardFilterLocationTypes.some(type => types.includes(type));
+        });
+      }
+
+      // 6. Source Platforms Filter
+      if (dashboardFilterPlatforms.length > 0) {
+        filtered = filtered.filter(j => j.source && dashboardFilterPlatforms.includes(j.source));
+      }
+
+      // 7. Salary Filters
+      if (dashboardFilterSalaryMin) {
+        const minVal = parseInt(dashboardFilterSalaryMin, 10);
+        filtered = filtered.filter(j => {
+          const salary = parseSalary(j.salary_range);
+          return salary.max >= minVal || salary.min >= minVal;
+        });
+      }
+      
+      if (dashboardFilterSalaryMax) {
+        const maxVal = parseInt(dashboardFilterSalaryMax, 10);
+        filtered = filtered.filter(j => {
+          const salary = parseSalary(j.salary_range);
+          return salary.min <= maxVal || salary.max <= maxVal;
+        });
+      }
+
+      // 8. Custom views interviews check
+      if (dashboardHasInterviewsThisWeek) {
+        const weekJobIds = interviews.filter(isInterviewThisWeek).map(i => String(i.job_id));
+        filtered = filtered.filter(j => weekJobIds.includes(String(j.id)));
+      }
+
+      // 9. Sorting Options
+      if (dashboardSortBy) {
+        filtered.sort((a, b) => {
+          if (dashboardSortBy === 'recent') {
+            return parseJobDate(b) - parseJobDate(a);
+          }
+          if (dashboardSortBy === 'oldest') {
+            return parseJobDate(a) - parseJobDate(b);
+          }
+          if (dashboardSortBy === 'salary') {
+            const salA = parseSalary(a.salary_range).max;
+            const salB = parseSalary(b.salary_range).max;
+            return salB - salA;
+          }
+          if (dashboardSortBy === 'interview') {
+            const weightA = a.status === 'interview' ? 1 : 0;
+            const weightB = b.status === 'interview' ? 1 : 0;
+            if (weightB !== weightA) return weightB - weightA;
+            return parseJobDate(b) - parseJobDate(a);
+          }
+          if (dashboardSortBy === 'offer') {
+            const weightA = a.status === 'offer' ? 1 : 0;
+            const weightB = b.status === 'offer' ? 1 : 0;
+            if (weightB !== weightA) return weightB - weightA;
+            return parseJobDate(b) - parseJobDate(a);
+          }
+          return 0;
+        });
+      }
+
       const viewContainer = document.getElementById('dashboard-view-target');
       if (!viewContainer) return;
       
       if (dashboardActiveView === 'table') {
-        // Render Table View
         viewContainer.innerHTML = `
           <div class="app-table-container">
             <table class="app-table">
@@ -2884,22 +3447,13 @@ async function renderDashboard() {
         
         const tbody = document.getElementById('table-body-target');
         if (filtered.length === 0) {
-          tbody.innerHTML = `
-            <tr>
-              <td colspan="6" style="text-align: center; padding: 48px; color: var(--color-text-secondary);">
-                <i class="fas fa-search" style="font-size: 1.5rem; margin-bottom: 8px; display: block;"></i>
-                No matching applications found.
-              </td>
-            </tr>
-          `;
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:48px; color:var(--color-text-secondary);">No matching applications found.</td></tr>`;
           return;
         }
         
         filtered.forEach(job => {
           const initial = job.company ? job.company.charAt(0).toUpperCase() : 'A';
           const avatarColor = getAvatarColor(initial);
-          let statusLabel = job.status.charAt(0).toUpperCase() + job.status.slice(1);
-          if (job.status === 'interview') statusLabel = 'Interviewing';
           
           let displayAppliedDate = 'N/A';
           if (job.date) {
@@ -2912,85 +3466,85 @@ async function renderDashboard() {
               displayAppliedDate = job.date;
             }
           }
-          
+
           let displayUpdatedDate = 'Just now';
           if (job.updated_at) {
             displayUpdatedDate = getRelativeTimeString(job.updated_at);
           }
-          
-          const row = document.createElement('tr');
-          row.style.cursor = 'pointer';
-          row.addEventListener('click', (e) => {
-            if (e.target.closest('a') || e.target.closest('button')) return;
+
+          const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          tr.addEventListener('click', () => {
             navigate('#/application/' + job.id);
           });
-          row.innerHTML = `
+
+          tr.innerHTML = `
             <td>
-              <div class="company-logo-cell">
-                <div class="company-logo-avatar" style="background-color: ${avatarColor}20; color: ${avatarColor};">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="company-avatar" style="background-color: ${avatarColor}20; color: ${avatarColor};">
                   ${initial}
                 </div>
-                <span>${job.company}</span>
+                <strong>${job.company}</strong>
               </div>
             </td>
-            <td><strong>${job.role}</strong></td>
-            <td><span class="badge-status ${job.status}">${statusLabel}</span></td>
-            <td><span style="font-weight: 500; color: var(--color-text-secondary);">${job.source}</span></td>
-            <td><span style="color: var(--color-text-secondary);">${displayAppliedDate}</span></td>
-            <td><span style="color: var(--color-text-secondary); font-size: 0.85rem;">${displayUpdatedDate}</span></td>
+            <td>${job.role}</td>
+            <td><span class="badge-status ${job.status}">${job.status.charAt(0).toUpperCase() + job.status.slice(1)}</span></td>
+            <td>${job.source}</td>
+            <td>${displayAppliedDate}</td>
+            <td class="relative-time-field" data-time="${job.updated_at}">${displayUpdatedDate}</td>
           `;
-          tbody.appendChild(row);
+          tbody.appendChild(tr);
         });
       } else {
-        // Render Kanban Board View (5 Columns)
         viewContainer.innerHTML = `
-          <div class="dashboard-mock-board" style="grid-template-columns: repeat(5, 1fr); gap: 16px;">
-            <!-- Column 1: Applied -->
-            <div class="dashboard-column" data-status="applied">
-              <div class="dashboard-column-title">
-                Applied
-                <span class="col-badge">${filtered.filter(j => j.status === 'applied').length}</span>
+          <div class="kanban-board">
+            <div class="kanban-col">
+              <div class="kanban-col-header" style="border-top-color: var(--color-secondary);">
+                <span>Applied</span>
+                <span class="kanban-col-count" id="col-applied-count">0</span>
               </div>
-              <div id="col-applied-list"></div>
+              <div class="kanban-cards-list" id="col-applied-list"></div>
             </div>
             
-            <!-- Column 2: Assessment -->
-            <div class="dashboard-column" data-status="assessment">
-              <div class="dashboard-column-title" style="border-top-color: var(--color-warning);">
-                Assessment
-                <span class="col-badge">${filtered.filter(j => j.status === 'assessment').length}</span>
+            <div class="kanban-col">
+              <div class="kanban-col-header" style="border-top-color: var(--color-warning);">
+                <span>Assessment</span>
+                <span class="kanban-col-count" id="col-assessment-count">0</span>
               </div>
-              <div id="col-assessment-list"></div>
-            </div>
-
-            <!-- Column 3: Interviewing -->
-            <div class="dashboard-column" data-status="interview">
-              <div class="dashboard-column-title" style="border-top-color: #8B5CF6;">
-                Interviewing
-                <span class="col-badge">${filtered.filter(j => j.status === 'interview').length}</span>
-              </div>
-              <div id="col-interview-list"></div>
+              <div class="kanban-cards-list" id="col-assessment-list"></div>
             </div>
             
-            <!-- Column 4: Offers -->
-            <div class="dashboard-column" data-status="offer">
-              <div class="dashboard-column-title">
-                Offers
-                <span class="col-badge">${filtered.filter(j => j.status === 'offer').length}</span>
+            <div class="kanban-col">
+              <div class="kanban-col-header" style="border-top-color: #8B5CF6;">
+                <span>Interviewing</span>
+                <span class="kanban-col-count" id="col-interview-count">0</span>
               </div>
-              <div id="col-offer-list"></div>
+              <div class="kanban-cards-list" id="col-interview-list"></div>
             </div>
             
-            <!-- Column 5: Rejections -->
-            <div class="dashboard-column" data-status="rejected">
-              <div class="dashboard-column-title">
-                Rejections
-                <span class="col-badge">${filtered.filter(j => j.status === 'rejected').length}</span>
+            <div class="kanban-col">
+              <div class="kanban-col-header" style="border-top-color: var(--color-success);">
+                <span>Offer</span>
+                <span class="kanban-col-count" id="col-offer-count">0</span>
               </div>
-              <div id="col-rejected-list"></div>
+              <div class="kanban-cards-list" id="col-offer-list"></div>
+            </div>
+            
+            <div class="kanban-col">
+              <div class="kanban-col-header" style="border-top-color: var(--color-danger);">
+                <span>Rejected</span>
+                <span class="kanban-col-count" id="col-rejected-count">0</span>
+              </div>
+              <div class="kanban-cards-list" id="col-rejected-list"></div>
             </div>
           </div>
         `;
+        
+        document.getElementById('col-applied-count').textContent = filtered.filter(j => j.status === 'applied').length;
+        document.getElementById('col-assessment-count').textContent = filtered.filter(j => j.status === 'assessment').length;
+        document.getElementById('col-interview-count').textContent = filtered.filter(j => j.status === 'interview').length;
+        document.getElementById('col-offer-count').textContent = filtered.filter(j => j.status === 'offer').length;
+        document.getElementById('col-rejected-count').textContent = filtered.filter(j => j.status === 'rejected').length;
         
         const lists = {
           applied: document.getElementById('col-applied-list'),
@@ -3004,37 +3558,19 @@ async function renderDashboard() {
           const listEl = lists[job.status];
           if (listEl) {
             const card = document.createElement('div');
-            card.className = 'app-card';
+            card.className = 'kanban-card';
             card.style.cursor = 'pointer';
-            card.addEventListener('click', () => {
-              navigate('#/application/' + job.id);
-            });
+            card.addEventListener('click', () => navigate('#/application/' + job.id));
             
-            let displayDate = job.date;
-            if (job.date && job.date.includes('-')) {
-              const dateObj = new Date(job.date);
-              if (!isNaN(dateObj)) {
-                displayDate = "Synced " + getRelativeTimeString(job.date);
-              }
-            }
-
             card.innerHTML = `
-              <div class="app-card-header">
-                <div>
-                  <div class="app-company">${job.company}</div>
-                  <div class="app-role">${job.role}</div>
-                </div>
-                <span class="app-source">${job.source}</span>
-              </div>
-              <div class="app-date">
-                <i class="far fa-clock"></i> ${displayDate}
-              </div>
+              <div class="kanban-company">${job.company}</div>
+              <div class="kanban-role">${job.role}</div>
+              <div class="kanban-meta">${job.source}</div>
             `;
             listEl.appendChild(card);
           }
         });
         
-        // Empty states for columns
         Object.keys(lists).forEach(status => {
           const listEl = lists[status];
           if (listEl && listEl.children.length === 0) {
@@ -3048,28 +3584,26 @@ async function renderDashboard() {
       }
     };
     
-    // Initial Render of List Items
     filterAndRender();
 
-    // Attach control listeners
-    // Search
+    // Event Bindings
     const searchInput = document.getElementById('dashboard-search');
     searchInput?.addEventListener('input', (e) => {
       dashboardSearchQuery = e.target.value.toLowerCase();
+      clearActiveSavedView();
       filterAndRender();
     });
     
-    // Filter Pills
     document.querySelectorAll('.filter-pill').forEach(pill => {
       pill.addEventListener('click', () => {
         document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
         dashboardStatusFilter = pill.getAttribute('data-filter');
+        clearActiveSavedView();
         filterAndRender();
       });
     });
     
-    // Layout view toggle
     document.querySelectorAll('.view-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
@@ -3077,6 +3611,121 @@ async function renderDashboard() {
         dashboardActiveView = btn.getAttribute('data-view');
         filterAndRender();
       });
+    });
+
+    // Toggle advanced filters panel drawer
+    document.getElementById('toggle-filters-btn')?.addEventListener('click', () => {
+      const btn = document.getElementById('toggle-filters-btn');
+      const panel = document.getElementById('advanced-filters-section');
+      dashboardFilterOpen = !dashboardFilterOpen;
+      if (dashboardFilterOpen) {
+        btn.classList.add('active');
+        panel.classList.add('open');
+      } else {
+        btn.classList.remove('active');
+        panel.classList.remove('open');
+      }
+    });
+
+    // Advanced checkbox Location types
+    document.querySelectorAll('.filter-loc-type').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const val = cb.value;
+        if (cb.checked) {
+          if (!dashboardFilterLocationTypes.includes(val)) dashboardFilterLocationTypes.push(val);
+        } else {
+          dashboardFilterLocationTypes = dashboardFilterLocationTypes.filter(v => v !== val);
+        }
+        clearActiveSavedView();
+        filterAndRender();
+      });
+    });
+
+    // Advanced checkbox Platforms
+    document.querySelectorAll('.filter-platform').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const val = cb.value;
+        if (cb.checked) {
+          if (!dashboardFilterPlatforms.includes(val)) dashboardFilterPlatforms.push(val);
+        } else {
+          dashboardFilterPlatforms = dashboardFilterPlatforms.filter(v => v !== val);
+        }
+        clearActiveSavedView();
+        filterAndRender();
+      });
+    });
+
+    // Advanced select Date
+    document.getElementById('filter-date-applied')?.addEventListener('change', (e) => {
+      dashboardFilterDateApplied = e.target.value;
+      clearActiveSavedView();
+      filterAndRender();
+    });
+
+    // Advanced select Salary Min
+    document.getElementById('filter-salary-min')?.addEventListener('change', (e) => {
+      dashboardFilterSalaryMin = e.target.value;
+      clearActiveSavedView();
+      filterAndRender();
+    });
+
+    // Advanced select Salary Max
+    document.getElementById('filter-salary-max')?.addEventListener('change', (e) => {
+      dashboardFilterSalaryMax = e.target.value;
+      clearActiveSavedView();
+      filterAndRender();
+    });
+
+    // Advanced select Sort By
+    document.getElementById('filter-sort-by')?.addEventListener('change', (e) => {
+      dashboardSortBy = e.target.value;
+      clearActiveSavedView();
+      filterAndRender();
+    });
+
+    // Clear all filters action
+    document.getElementById('btn-clear-all-filters')?.addEventListener('click', () => {
+      dashboardSearchQuery = "";
+      dashboardStatusFilter = "all";
+      dashboardFilterLocationTypes = [];
+      dashboardFilterPlatforms = [];
+      dashboardFilterDateApplied = "all";
+      dashboardFilterSalaryMin = "";
+      dashboardFilterSalaryMax = "";
+      dashboardSortBy = "recent";
+      dashboardHasInterviewsThisWeek = false;
+      clearActiveSavedView();
+      
+      if (searchInput) searchInput.value = "";
+      
+      document.querySelectorAll('.filter-pill').forEach(p => {
+        if (p.getAttribute('data-filter') === 'all') p.classList.add('active');
+        else p.classList.remove('active');
+      });
+      
+      const dateSelect = document.getElementById('filter-date-applied');
+      if (dateSelect) dateSelect.value = "all";
+      
+      const minSelect = document.getElementById('filter-salary-min');
+      if (minSelect) minSelect.value = "";
+      const maxSelect = document.getElementById('filter-salary-max');
+      if (maxSelect) maxSelect.value = "";
+      
+      const sortSelect = document.getElementById('filter-sort-by');
+      if (sortSelect) sortSelect.value = "recent";
+      
+      const panel = document.getElementById('advanced-filters-section');
+      if (panel) {
+        panel.querySelectorAll('.filter-loc-type').forEach(cb => cb.checked = false);
+        panel.querySelectorAll('.filter-platform').forEach(cb => cb.checked = false);
+      }
+      
+      filterAndRender();
+    });
+
+    // Save view button
+    document.getElementById('btn-save-current-view')?.addEventListener('click', () => {
+      openSaveViewModal();
     });
 
     // Sync button logic
@@ -3092,9 +3741,12 @@ async function renderDashboard() {
       syncBtn.innerHTML = oldText;
       
       if (success) {
-        renderDashboard(); // Re-render to show updated last_synced and new cards!
+        renderDashboard();
       }
     });
+
+    // Populate saved views dynamically in the DOM
+    await renderSavedViewsUI();
 
     startRelativeTimeUpdater();
   } catch (err) {
@@ -3437,6 +4089,17 @@ function renderAppShell(currentHash) {
             <i class="fas fa-map-signs"></i> Setup Guide
           </a>
         </nav>
+        
+        <!-- Sidebar Saved Views Section -->
+        <div class="sidebar-views-section" id="sidebar-saved-views-section">
+          <div class="sidebar-views-header">
+            <span>Saved Views</span>
+          </div>
+          <div class="saved-views-list" id="sidebar-saved-views-list">
+            <!-- Dynamic Saved Views -->
+          </div>
+        </div>
+
         <div class="sidebar-footer">
           <div class="sidebar-user">
             <i class="far fa-user-circle"></i>
@@ -3493,6 +4156,9 @@ function renderAppShell(currentHash) {
   };
   document.getElementById('sidebar-logout-btn')?.addEventListener('click', handleLogout);
   document.getElementById('bottom-logout-btn')?.addEventListener('click', handleLogout);
+  
+  // Render saved views inside the sidebar immediately on app shell mount
+  setTimeout(renderSavedViewsUI, 50);
 }
 
 function updateAppShellActiveLink(currentHash) {
