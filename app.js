@@ -2642,6 +2642,7 @@ let dashboardSearchQuery = "";
 let dashboardStatusFilter = "all";
 let dashboardActiveView = "table";
 let dashboardFilterOpen = false;
+let dashboardFilterStatuses = [];
 let dashboardFilterLocationTypes = [];
 let dashboardFilterPlatforms = [];
 let dashboardFilterDateApplied = "all";
