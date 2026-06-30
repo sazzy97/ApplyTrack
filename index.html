@@ -86,6 +86,7 @@
     function checkDemoBanner() {
       if (window.USE_MOCK_AUTH) {
         document.getElementById('demo-banner-wrapper').style.display = 'block';
+        document.body.classList.add('demo-mode-active');
       }
     }
     if (document.readyState === 'loading') {
