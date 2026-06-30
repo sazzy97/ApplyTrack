@@ -5141,13 +5141,9 @@ async function renderInterviews() {
     editingInterviewId = interviewId;
     
     const jobs = await fetchJobs();
-    if (jobs.length === 0) {
-      showToast("Create a job application first before scheduling an interview.", "info");
-      return;
-    }
 
     let intData = {
-      job_id: jobs[0].id,
+      job_id: jobs.length > 0 ? jobs[0].id : 'new',
       interview_type: 'Screening Call',
       date: prefilledDate || new Date().toISOString().split('T')[0],
       time: '10:00',
@@ -5181,8 +5177,21 @@ async function renderInterviews() {
           <div class="edit-form-group">
             <label style="font-size: 0.72rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase;">Job Application</label>
             <select id="form-int-job" class="status-select" style="width:100%;" ${isEdit ? 'disabled' : ''}>
+              ${!isEdit ? `<option value="new" ${intData.job_id === 'new' ? 'selected' : ''}>[Create New Application...]</option>` : ''}
               ${jobs.map(j => `<option value="${j.id}" ${String(j.id) === String(intData.job_id) ? 'selected' : ''}>${j.company} - ${j.role}</option>`).join('')}
             </select>
+          </div>
+
+          <!-- New Job Inputs (Shown if "new" is selected) -->
+          <div id="new-job-inputs-wrapper" style="display:${intData.job_id === 'new' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="edit-form-group">
+              <label style="font-size: 0.72rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase;">Company Name</label>
+              <input type="text" id="form-new-company" class="detail-input" placeholder="e.g. Google">
+            </div>
+            <div class="edit-form-group">
+              <label style="font-size: 0.72rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase;">Job Title / Role</label>
+              <input type="text" id="form-new-role" class="detail-input" placeholder="e.g. Product Designer">
+            </div>
           </div>
 
           <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:16px;">
@@ -5275,6 +5284,19 @@ async function renderInterviews() {
 
     document.body.appendChild(modal);
 
+    // Toggle inline company and role inputs if "new" is selected
+    const jobSelect = document.getElementById('form-int-job');
+    const newJobWrapper = document.getElementById('new-job-inputs-wrapper');
+    if (jobSelect && newJobWrapper) {
+      jobSelect.addEventListener('change', () => {
+        if (jobSelect.value === 'new') {
+          newJobWrapper.style.display = 'grid';
+        } else {
+          newJobWrapper.style.display = 'none';
+        }
+      });
+    }
+
     // Attach modal events
     const closeModal = () => {
       modal.remove();
@@ -5310,7 +5332,7 @@ async function renderInterviews() {
     }
 
     document.getElementById('modal-save-btn').addEventListener('click', async () => {
-      const jobIdVal = document.getElementById('form-int-job').value;
+      let jobIdVal = document.getElementById('form-int-job').value;
       const typeVal = document.getElementById('form-int-type').value;
       const statusVal = document.getElementById('form-int-status').value;
       const dateVal = document.getElementById('form-int-date').value;
@@ -5331,24 +5353,49 @@ async function renderInterviews() {
         return;
       }
 
-      const postData = {
-        job_id: jobIdVal,
-        interview_type: typeVal,
-        status: statusVal,
-        date: dateVal,
-        time: timeVal,
-        time_zone: zoneVal || 'EST',
-        meeting_link: linkVal,
-        interviewer_name: nameVal,
-        interviewer_email: emailVal,
-        notes: notesVal,
-        reminders: reminderVals
-      };
-
       try {
         const saveBtn = document.getElementById('modal-save-btn');
         saveBtn.disabled = true;
-        
+
+        if (jobIdVal === 'new') {
+          const companyName = document.getElementById('form-new-company').value.trim();
+          const roleName = document.getElementById('form-new-role').value.trim();
+          if (!companyName || !roleName) {
+            showToast("Please enter both Company Name and Job Title", "error");
+            saveBtn.disabled = false;
+            return;
+          }
+          
+          const createdJobs = await saveJobs([{
+            company: companyName,
+            role: roleName,
+            status: 'interview',
+            source: 'Manual Entry'
+          }]);
+          
+          if (createdJobs && createdJobs.length > 0) {
+            jobIdVal = createdJobs[0].id;
+          } else {
+            showToast("Failed to create new job application", "error");
+            saveBtn.disabled = false;
+            return;
+          }
+        }
+
+        const postData = {
+          job_id: jobIdVal,
+          interview_type: typeVal,
+          status: statusVal,
+          date: dateVal,
+          time: timeVal,
+          time_zone: zoneVal || 'EST',
+          meeting_link: linkVal,
+          interviewer_name: nameVal,
+          interviewer_email: emailVal,
+          notes: notesVal,
+          reminders: reminderVals
+        };
+
         if (isEdit) {
           await updateInterview(interviewId, postData);
           showToast("Interview updated successfully", "success");

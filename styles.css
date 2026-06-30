@@ -3714,9 +3714,10 @@ input:checked + .slider:before {
    ========================================================================== */
 
 .notification-page-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 16px;
+  margin: -40px;
+  padding: 32px;
+  background-color: var(--color-bg);
+  min-height: calc(100vh - 80px);
 }
 
 .notification-header-row {
@@ -3728,21 +3729,20 @@ input:checked + .slider:before {
 
 .notification-tabs {
   display: flex;
-  gap: 8px;
+  gap: 24px;
   border-bottom: 1px solid var(--color-border);
   margin-bottom: 24px;
-  padding-bottom: 8px;
 }
 
 .notification-tab-btn {
   background: transparent;
   border: none;
-  padding: 8px 16px;
-  font-size: 0.9rem;
+  padding: 12px 4px;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--color-text-secondary);
   cursor: pointer;
-  border-radius: var(--radius-md);
+  position: relative;
   transition: all var(--transition-fast);
   display: inline-flex;
   align-items: center;
@@ -3750,32 +3750,43 @@ input:checked + .slider:before {
 }
 
 .notification-tab-btn:hover {
-  background-color: var(--color-bg-hover);
   color: var(--color-text);
 }
 
 .notification-tab-btn.active {
-  background-color: var(--color-secondary-light);
   color: var(--color-secondary);
+  font-weight: 700;
 }
 
-.notification-tab-btn .badge-pill {
-  font-size: 0.75rem;
-  background-color: rgba(0, 0, 0, 0.05);
-  color: var(--color-text-secondary);
-  padding: 2px 8px;
+.notification-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--color-secondary);
   border-radius: var(--radius-full);
 }
 
+.notification-tab-btn .badge-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  background-color: #E2E8F0;
+  color: #64748B;
+}
+
 .notification-tab-btn.active .badge-pill {
-  background-color: var(--color-secondary);
-  color: #FFFFFF;
+  background-color: var(--color-secondary-light);
+  color: var(--color-secondary);
 }
 
 .notification-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .notification-item {
@@ -3784,11 +3795,12 @@ input:checked + .slider:before {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 20px 24px;
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-fast);
   position: relative;
   overflow: hidden;
+  align-items: center;
 }
 
 .notification-item:hover {
@@ -3798,7 +3810,6 @@ input:checked + .slider:before {
 }
 
 .notification-item.unread {
-  background-color: rgba(59, 130, 246, 0.02);
   border-left: 4px solid var(--color-secondary);
 }
 
