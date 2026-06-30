@@ -1328,6 +1328,165 @@ const STATUS_WEIGHT = {
   'offer': 5
 };
 
+// Notifications Database Manager (local persistence and Supabase adapter)
+async function fetchNotifications() {
+  if (window.USE_MOCK_AUTH) {
+    let stored = localStorage.getItem('applytrack_notifications');
+    if (!stored) {
+      // Seed default mock notifications
+      const defaultNotices = [
+        {
+          id: "mock-notif-1",
+          user_id: "mock-user-id",
+          job_id: "google-mock-id", // Google mock job
+          title: "Google Technical Portfolio Review",
+          message: "A portfolio review has been scheduled for tomorrow at 2:00 PM PST. Zoom link attached.",
+          type: "Interview Scheduled",
+          status: "unread",
+          created_at: new Date(Date.now() - 3600 * 1000 * 2).toISOString() // 2 hours ago
+        },
+        {
+          id: "mock-notif-2",
+          user_id: "mock-user-id",
+          job_id: "figma-mock-id", // Figma mock job
+          title: "Figma Follow-Up Recommended",
+          message: "Application submitted 14 days ago with no response. Consider sending a friendly follow-up email.",
+          type: "Reminder Due",
+          status: "unread",
+          created_at: new Date(Date.now() - 3600 * 1000 * 24).toISOString() // 1 day ago
+        },
+        {
+          id: "mock-notif-3",
+          user_id: "mock-user-id",
+          job_id: "stripe-mock-id",
+          title: "Stripe Application Synced",
+          message: "New application synced automatically from Stripe recruitment confirmation email.",
+          type: "Application Updated",
+          status: "unread",
+          created_at: new Date(Date.now() - 3600 * 1000 * 48).toISOString() // 2 days ago
+        }
+      ];
+      localStorage.setItem('applytrack_notifications', JSON.stringify(defaultNotices));
+      return defaultNotices;
+    }
+    return JSON.parse(stored);
+  } else {
+    const { data, error } = await supabaseClient
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function addNotification(title, message, type, jobId = null) {
+  if (window.USE_MOCK_AUTH) {
+    const list = await fetchNotifications();
+    const newNotice = {
+      id: "mock-notif-" + Date.now(),
+      user_id: "mock-user-id",
+      job_id: jobId,
+      title: title,
+      message: message,
+      type: type,
+      status: "unread",
+      created_at: new Date().toISOString()
+    };
+    list.unshift(newNotice);
+    localStorage.setItem('applytrack_notifications', JSON.stringify(list));
+    return newNotice;
+  } else {
+    const newNotice = {
+      user_id: currentUser.id,
+      job_id: jobId,
+      title: title,
+      message: message,
+      type: type,
+      status: "unread",
+      created_at: new Date().toISOString()
+    };
+    const { data, error } = await supabaseClient
+      .from('notifications')
+      .insert(newNotice)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function updateNotificationStatus(id, status) {
+  if (window.USE_MOCK_AUTH) {
+    const list = await fetchNotifications();
+    const item = list.find(n => n.id === id);
+    if (item) {
+      item.status = status;
+      localStorage.setItem('applytrack_notifications', JSON.stringify(list));
+    }
+  } else {
+    const { error } = await supabaseClient
+      .from('notifications')
+      .update({ status: status })
+      .eq('id', id);
+    if (error) throw error;
+  }
+}
+
+async function markAllNotificationsAsRead() {
+  if (window.USE_MOCK_AUTH) {
+    const list = await fetchNotifications();
+    list.forEach(n => {
+      if (n.status === 'unread') n.status = 'read';
+    });
+    localStorage.setItem('applytrack_notifications', JSON.stringify(list));
+  } else {
+    const { error } = await supabaseClient
+      .from('notifications')
+      .update({ status: 'read' })
+      .eq('status', 'unread');
+    if (error) throw error;
+  }
+}
+
+async function updateFollowUpFields(jobId, followUpDate, followUpStatus, lastFollowUp) {
+  if (window.USE_MOCK_AUTH) {
+    const list = getJobs();
+    const item = list.find(j => String(j.id) === String(jobId));
+    if (item) {
+      item.follow_up_date = followUpDate || null;
+      item.follow_up_status = followUpStatus || 'none';
+      item.last_follow_up = lastFollowUp || null;
+      localStorage.setItem('applytrack_jobs', JSON.stringify(list));
+    }
+  } else {
+    const { error } = await supabaseClient
+      .from('jobs')
+      .update({
+        follow_up_date: followUpDate || null,
+        follow_up_status: followUpStatus || 'none',
+        last_follow_up: lastFollowUp || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', jobId);
+    if (error) throw error;
+  }
+}
+
+async function deleteNotification(id) {
+  if (window.USE_MOCK_AUTH) {
+    const list = await fetchNotifications();
+    const filtered = list.filter(n => n.id !== id);
+    localStorage.setItem('applytrack_notifications', JSON.stringify(filtered));
+  } else {
+    const { error } = await supabaseClient
+      .from('notifications')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  }
+}
+
 // Jobs Database Manager (local persistence and Supabase adapter)
 async function fetchJobs() {
   if (window.USE_MOCK_AUTH) {
@@ -2656,6 +2815,100 @@ let dashboardHasInterviewsThisWeek = false;
 let calendarActiveView = "month";
 let calendarSelectedDate = new Date();
 
+// Notifications state management variables
+let notificationsFilter = "unread"; // 'unread', 'read', 'archived'
+let notificationsList = [];
+
+async function updateMenuNotificationBadges() {
+  try {
+    const list = await fetchNotifications();
+    const unread = list.filter(n => n.status === 'unread').length;
+    
+    const sidebarCount = document.getElementById('sidebar-unread-count');
+    const mobileCount = document.getElementById('mobile-unread-count');
+    
+    if (sidebarCount) {
+      if (unread > 0) {
+        sidebarCount.textContent = unread;
+        sidebarCount.style.display = 'inline-block';
+      } else {
+        sidebarCount.style.display = 'none';
+      }
+    }
+    
+    if (mobileCount) {
+      if (unread > 0) {
+        mobileCount.textContent = unread;
+        mobileCount.style.display = 'inline-block';
+      } else {
+        mobileCount.style.display = 'none';
+      }
+    }
+  } catch (err) {
+    console.error("Failed to update notification badges:", err);
+  }
+}
+
+async function runSmartAlertsEngine() {
+  try {
+    const [jobs, notices] = await Promise.all([
+      fetchJobs(),
+      fetchNotifications()
+    ]);
+    
+    let generatedAny = false;
+    const now = new Date();
+    
+    for (const job of jobs) {
+      // 1. Submit > 14 days with no response
+      if (job.status === 'applied') {
+        const jDate = parseJobDate(job);
+        const diffMs = now - jDate;
+        const diffDays = Math.floor(diffMs / (24 * 3600 * 1000));
+        
+        if (diffDays >= 14) {
+          const exists = notices.some(n => String(n.job_id) === String(job.id) && n.title.includes("Follow-Up Recommended"));
+          if (!exists) {
+            await addNotification(
+              `${job.company} Follow-Up Recommended`,
+              `Application submitted ${diffDays} days ago with no response. We recommend sending a follow-up email to their hiring team.`,
+              "Reminder Due",
+              job.id
+            );
+            generatedAny = true;
+          }
+        }
+      }
+      
+      // 2. Follow-up scheduler is due and status is 'pending'
+      if (job.follow_up_status === 'pending' && job.follow_up_date) {
+        const fDate = new Date(job.follow_up_date);
+        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const fMidnight = new Date(fDate.getFullYear(), fDate.getMonth(), fDate.getDate());
+        
+        if (fMidnight <= todayMidnight) {
+          const exists = notices.some(n => String(n.job_id) === String(job.id) && n.title.includes("Follow-Up Reminder") && n.status === 'unread');
+          if (!exists) {
+            await addNotification(
+              `${job.company} Follow-Up Reminder`,
+              `Your scheduled follow-up outreach for the ${job.role} role at ${job.company} is due today.`,
+              "Reminder Due",
+              job.id
+            );
+            generatedAny = true;
+          }
+        }
+      }
+    }
+    
+    if (generatedAny) {
+      updateMenuNotificationBadges();
+    }
+  } catch (err) {
+    console.error("Smart alerts engine failed:", err);
+  }
+}
+
 function getAvatarColor(char) {
   const colors = [
     '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', 
@@ -3497,6 +3750,251 @@ async function renderDashboard() {
   }
 }
 
+/* ==========================================================================
+   MILESTONE 8: NOTIFICATIONS CENTER CONTROLLER
+   ========================================================================== */
+async function renderNotifications() {
+  const root = getAppViewRoot();
+  
+  root.innerHTML = `
+    <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary);"></i>
+      <p style="color:var(--color-text-secondary); font-weight:500;">Loading notifications...</p>
+    </div>
+  `;
+
+  try {
+    const list = await fetchNotifications();
+    notificationsList = list;
+    
+    const unreadCount = list.filter(n => n.status === 'unread').length;
+    const readCount = list.filter(n => n.status === 'read').length;
+    const archivedCount = list.filter(n => n.status === 'archived').length;
+
+    root.innerHTML = `
+      <div class="notification-page-container">
+        <div class="notification-header-row">
+          <div>
+            <h1 class="page-title" style="margin-bottom:4px;">Notification Center</h1>
+            <p style="color:var(--color-text-secondary); font-size:0.9rem;">Manage all follow-up updates, reminders, and alerts.</p>
+          </div>
+          ${notificationsFilter === 'unread' && unreadCount > 0 ? `
+            <button id="btn-mark-all-read" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:6px;">
+              <i class="fas fa-check-double"></i> Mark All as Read
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="notification-tabs">
+          <button class="notification-tab-btn ${notificationsFilter === 'unread' ? 'active' : ''}" data-tab="unread">
+            Unread <span class="badge-pill">${unreadCount}</span>
+          </button>
+          <button class="notification-tab-btn ${notificationsFilter === 'read' ? 'active' : ''}" data-tab="read">
+            Read <span class="badge-pill">${readCount}</span>
+          </button>
+          <button class="notification-tab-btn ${notificationsFilter === 'archived' ? 'active' : ''}" data-tab="archived">
+            Archived <span class="badge-pill">${archivedCount}</span>
+          </button>
+        </div>
+
+        <div class="notification-list" id="notifications-items-target"></div>
+      </div>
+    `;
+
+    const itemsContainer = document.getElementById('notifications-items-target');
+    const filteredNotices = list.filter(n => n.status === notificationsFilter);
+
+    if (filteredNotices.length === 0) {
+      itemsContainer.innerHTML = `
+        <div style="text-align:center; padding:64px 24px; color:var(--color-text-secondary); background-color:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg);">
+          <i class="far fa-bell-slash" style="font-size:2.5rem; color:var(--color-text-secondary); opacity:0.5; margin-bottom:16px; display:block;"></i>
+          <h3 style="font-weight:600; color:var(--color-text); margin-bottom:4px;">No ${notificationsFilter} notifications</h3>
+          <p style="font-size:0.88rem;">We'll alert you when there are updates or recommended follow-ups.</p>
+        </div>
+      `;
+    } else {
+      filteredNotices.forEach(notif => {
+        let iconClass = 'icon-updated';
+        let iconMarkup = '<i class="fas fa-bell"></i>';
+
+        if (notif.type === 'Interview Scheduled') {
+          iconClass = 'icon-interview';
+          iconMarkup = '<i class="fas fa-calendar-alt"></i>';
+        } else if (notif.type === 'Assessment Received') {
+          iconClass = 'icon-assessment';
+          iconMarkup = '<i class="fas fa-file-code"></i>';
+        } else if (notif.type === 'Offer Received') {
+          iconClass = 'icon-offer';
+          iconMarkup = '<i class="fas fa-trophy"></i>';
+        } else if (notif.type === 'Application Updated') {
+          iconClass = 'icon-updated';
+          iconMarkup = '<i class="fas fa-sync-alt"></i>';
+        } else if (notif.type === 'Reminder Due') {
+          iconClass = 'icon-reminder';
+          iconMarkup = '<i class="fas fa-exclamation-circle"></i>';
+        }
+
+        const relativeTime = getRelativeTimeString(notif.created_at);
+
+        const card = document.createElement('div');
+        card.className = `notification-item ${notif.status === 'unread' ? 'unread' : ''}`;
+        
+        let actionButtons = '';
+        if (notificationsFilter === 'unread') {
+          actionButtons = `
+            <button class="notification-action-btn success btn-mark-read" data-id="${notif.id}" title="Mark as Read">
+              <i class="fas fa-check"></i>
+            </button>
+            <button class="notification-action-btn btn-archive" data-id="${notif.id}" title="Archive">
+              <i class="fas fa-archive"></i>
+            </button>
+          `;
+        } else if (notificationsFilter === 'read') {
+          actionButtons = `
+            <button class="notification-action-btn btn-mark-unread" data-id="${notif.id}" title="Mark as Unread">
+              <i class="fas fa-envelope"></i>
+            </button>
+            <button class="notification-action-btn btn-archive" data-id="${notif.id}" title="Archive">
+              <i class="fas fa-archive"></i>
+            </button>
+          `;
+        } else if (notificationsFilter === 'archived') {
+          actionButtons = `
+            <button class="notification-action-btn success btn-unarchive" data-id="${notif.id}" title="Restore to Read">
+              <i class="fas fa-undo"></i>
+            </button>
+            <button class="notification-action-btn danger btn-delete-notif" data-id="${notif.id}" title="Delete Permanently">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="notification-icon-wrapper ${iconClass}">
+            ${iconMarkup}
+          </div>
+          <div class="notification-body-content" style="cursor:${notif.job_id ? 'pointer' : 'default'};">
+            <div class="notification-title">${notif.title}</div>
+            <div class="notification-message">${notif.message}</div>
+            <div class="notification-timestamp">
+              <i class="far fa-clock"></i> ${relativeTime}
+            </div>
+          </div>
+          <div class="notification-actions-btn-group">
+            ${actionButtons}
+          </div>
+        `;
+
+        if (notif.job_id) {
+          card.querySelector('.notification-body-content').addEventListener('click', () => {
+            navigate('#/application/' + notif.job_id);
+          });
+        }
+
+        itemsContainer.appendChild(card);
+      });
+    }
+
+    // Attach Event Listeners
+    document.querySelectorAll('.notification-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        notificationsFilter = btn.getAttribute('data-tab');
+        renderNotifications();
+      });
+    });
+
+    document.getElementById('btn-mark-all-read')?.addEventListener('click', async () => {
+      try {
+        await markAllNotificationsAsRead();
+        showToast("All notifications marked as read", "success");
+        await renderNotifications();
+        updateMenuNotificationBadges();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.querySelectorAll('.btn-mark-read').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        try {
+          await updateNotificationStatus(id, 'read');
+          await renderNotifications();
+          updateMenuNotificationBadges();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    document.querySelectorAll('.btn-mark-unread').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        try {
+          await updateNotificationStatus(id, 'unread');
+          await renderNotifications();
+          updateMenuNotificationBadges();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    document.querySelectorAll('.btn-archive').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        try {
+          await updateNotificationStatus(id, 'archived');
+          showToast("Notification archived", "info");
+          await renderNotifications();
+          updateMenuNotificationBadges();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    document.querySelectorAll('.btn-unarchive').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        try {
+          await updateNotificationStatus(id, 'read');
+          showToast("Notification restored to Read", "success");
+          await renderNotifications();
+          updateMenuNotificationBadges();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    document.querySelectorAll('.btn-delete-notif').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        if (confirm("Are you sure you want to delete this notification permanently?")) {
+          try {
+            await deleteNotification(id);
+            showToast("Notification deleted", "info");
+            await renderNotifications();
+            updateMenuNotificationBadges();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        }
+      });
+    });
+
+  } catch (err) {
+    console.error("Notifications render error:", err);
+    showToast(err.message, 'error');
+  }
+}
+
 // 7. SETTINGS PAGE
 function renderSettings() {
   const root = getAppViewRoot();
@@ -3807,7 +4305,7 @@ function getAppViewRoot() {
 
 function renderAppShell(currentHash) {
   const root = document.getElementById('app-root');
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : 'dashboard';
   
   root.innerHTML = `
     <div class="app-shell">
@@ -3823,6 +4321,10 @@ function renderAppShell(currentHash) {
           </a>
           <a href="#/interviews" class="sidebar-link ${activeTab === 'interviews' ? 'active' : ''}" id="sidebar-link-interviews">
             <i class="fas fa-calendar-alt"></i> Interviews
+          </a>
+          <a href="#/notifications" class="sidebar-link ${activeTab === 'notifications' ? 'active' : ''}" id="sidebar-link-notifications" style="position:relative; display:flex; align-items:center;">
+            <i class="fas fa-bell"></i> Notifications
+            <span class="sidebar-badge" id="sidebar-unread-count" style="display:none;">0</span>
           </a>
           <a href="#/settings" class="sidebar-link ${activeTab === 'settings' ? 'active' : ''}" id="sidebar-link-settings">
             <i class="fas fa-cog"></i> Settings
@@ -3862,13 +4364,14 @@ function renderAppShell(currentHash) {
           <i class="fas fa-calendar-alt"></i>
           <span>Interviews</span>
         </a>
+        <a href="#/notifications" class="bottom-nav-link ${activeTab === 'notifications' ? 'active' : ''}" id="bottom-link-notifications" style="position:relative;">
+          <i class="fas fa-bell"></i>
+          <span>Alerts</span>
+          <span class="menu-badge" id="mobile-unread-count" style="display:none;">0</span>
+        </a>
         <a href="#/settings" class="bottom-nav-link ${activeTab === 'settings' ? 'active' : ''}" id="bottom-link-settings">
           <i class="fas fa-cog"></i>
           <span>Settings</span>
-        </a>
-        <a href="#/onboarding" class="bottom-nav-link ${activeTab === 'onboarding' ? 'active' : ''}" id="bottom-link-onboarding">
-          <i class="fas fa-map-signs"></i>
-          <span>Setup</span>
         </a>
         <a id="bottom-logout-btn" class="bottom-nav-link" style="color: var(--color-danger); cursor: pointer;">
           <i class="fas fa-sign-out-alt"></i>
@@ -3888,10 +4391,13 @@ function renderAppShell(currentHash) {
   };
   document.getElementById('sidebar-logout-btn')?.addEventListener('click', handleLogout);
   document.getElementById('bottom-logout-btn')?.addEventListener('click', handleLogout);
+  
+  // Initial count update
+  updateMenuNotificationBadges();
 }
 
 function updateAppShellActiveLink(currentHash) {
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : 'dashboard';
   
   document.querySelectorAll('.sidebar-link, .bottom-nav-link').forEach(link => {
     link.classList.remove('active');
@@ -3915,6 +4421,7 @@ const routes = {
   '#/dashboard': { render: renderDashboard, authRequired: true, onboardingRequired: true },
   '#/settings': { render: renderSettings, authRequired: true, onboardingRequired: true },
   '#/interviews': { render: renderInterviews, authRequired: true, onboardingRequired: true },
+  '#/notifications': { render: renderNotifications, authRequired: true, onboardingRequired: true },
   '#/application/:id': {
     render: () => {
       const parts = window.location.hash.split('/');
@@ -3987,7 +4494,9 @@ async function handleRouting() {
         renderAppShell(currentHash);
       } else {
         updateAppShellActiveLink(currentHash);
+        updateMenuNotificationBadges();
       }
+      runSmartAlertsEngine();
     } else {
       if (navbar) navbar.style.display = 'flex';
       if (footer) footer.style.display = 'block';
@@ -5188,6 +5697,56 @@ async function renderApplicationDetail(jobId) {
                 `}
               </div>
 
+              <!-- Follow-Up Details Card -->
+              <div class="detail-card">
+                <h3 class="detail-card-title">
+                  <span><i class="fas fa-reply" style="margin-right: 8px;"></i> Follow-Up Tracking</span>
+                </h3>
+                
+                <!-- Smart Alert Warning inside Follow-Up card if recommended -->
+                ${(() => {
+                  if (job.status === 'applied') {
+                    const jDate = parseJobDate(job);
+                    const diffMs = new Date() - jDate;
+                    const diffDays = Math.floor(diffMs / (24 * 3600 * 1000));
+                    if (diffDays >= 14) {
+                      return `
+                        <div class="follow-up-alert-notice">
+                          <i class="fas fa-exclamation-circle"></i>
+                          <div>
+                            <div class="follow-up-alert-title">Follow-up Recommended</div>
+                            <div class="follow-up-alert-desc">Submitted ${diffDays} days ago with no response.</div>
+                          </div>
+                        </div>
+                      `;
+                    }
+                  }
+                  return '';
+                })()}
+
+                <div class="edit-form" style="display: block;">
+                  <div class="edit-form-group">
+                    <label>Follow-Up Status</label>
+                    <select id="detail-follow-up-status" class="status-select" style="width: 100%;">
+                      <option value="none" ${job.follow_up_status === 'none' || !job.follow_up_status ? 'selected' : ''}>None</option>
+                      <option value="pending" ${job.follow_up_status === 'pending' ? 'selected' : ''}>Scheduled / Pending</option>
+                      <option value="completed" ${job.follow_up_status === 'completed' ? 'selected' : ''}>Completed</option>
+                    </select>
+                  </div>
+                  <div class="edit-form-group">
+                    <label>Target Follow-Up Date</label>
+                    <input type="date" id="detail-follow-up-date" class="detail-input" value="${job.follow_up_date ? job.follow_up_date.split('T')[0] : ''}">
+                  </div>
+                  <div class="edit-form-group">
+                    <label>Last Outreach Date</label>
+                    <input type="date" id="detail-last-follow-up" class="detail-input" value="${job.last_follow_up ? job.last_follow_up.split('T')[0] : ''}">
+                  </div>
+                  <button id="save-follow-up-btn" class="btn btn-primary btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-save"></i> Save Follow-Up Plan
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -5373,6 +5932,25 @@ async function renderApplicationDetail(jobId) {
           showToast(err.message, "error");
         }
       });
+    });
+
+    // 10. Save Follow-Up click handler
+    document.getElementById('save-follow-up-btn')?.addEventListener('click', async () => {
+      const status = document.getElementById('detail-follow-up-status').value;
+      const date = document.getElementById('detail-follow-up-date').value;
+      const lastDate = document.getElementById('detail-last-follow-up').value;
+      
+      try {
+        const btn = document.getElementById('save-follow-up-btn');
+        btn.disabled = true;
+        await updateFollowUpFields(jobId, date ? new Date(date).toISOString() : null, status, lastDate ? new Date(lastDate).toISOString() : null);
+        showToast("Follow-up plan saved successfully", "success");
+        loadAndRender();
+        runSmartAlertsEngine();
+      } catch (err) {
+        document.getElementById('save-follow-up-btn').disabled = false;
+        showToast(err.message, "error");
+      }
     });
   }
 

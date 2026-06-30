@@ -232,3 +232,44 @@ CREATE POLICY "Allow individual insert access to own saved views"
 CREATE POLICY "Allow individual delete access to own saved views"
   ON public.saved_views FOR DELETE
   USING (auth.uid() = user_id);
+
+-- ==========================================================================
+-- MILESTONE 8: NOTIFICATIONS & FOLLOW-UP CENTER
+-- ==========================================================================
+
+-- Create notifications table
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  job_id UUID REFERENCES public.jobs ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT NOT NULL, -- 'Interview Scheduled', 'Assessment Received', 'Offer Received', 'Application Updated', 'Reminder Due'
+  status TEXT DEFAULT 'unread' NOT NULL, -- 'unread', 'read', 'archived'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on notifications
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for notifications access
+CREATE POLICY "Allow individual select access to own notifications"
+  ON public.notifications FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual insert access to own notifications"
+  ON public.notifications FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual update access to own notifications"
+  ON public.notifications FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual delete access to own notifications"
+  ON public.notifications FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Alter jobs table to add follow-up columns
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS follow_up_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS follow_up_status TEXT DEFAULT 'none' NOT NULL;
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS last_follow_up TIMESTAMP WITH TIME ZONE;
