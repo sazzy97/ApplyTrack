@@ -6361,27 +6361,7 @@ function renderAppShell(currentHash) {
           <!-- Route content injected dynamically -->
         </div>
       </main>
-      
-      <!-- Bottom Navigation for Mobile -->
-      <nav class="bottom-nav">
-        <a href="#/dashboard" class="bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}" id="bottom-link-dashboard">
-          <i class="fas fa-chart-pie"></i>
-          <span>Dashboard</span>
-        </a>
-        <a href="#/interviews" class="bottom-nav-item ${activeTab === 'interviews' ? 'active' : ''}" id="bottom-link-interviews">
-          <i class="fas fa-calendar-alt"></i>
-          <span>Interviews</span>
-        </a>
-        <a href="#/notifications" class="bottom-nav-item ${activeTab === 'notifications' ? 'active' : ''}" id="bottom-link-notifications" style="position:relative;">
-          <i class="fas fa-bell"></i>
-          <span>Alerts</span>
-          <span class="bottom-nav-badge" id="mobile-unread-count" style="display:none;">0</span>
-        </a>
-        <a href="#/settings" class="bottom-nav-item ${activeTab === 'settings' ? 'active' : ''}" id="bottom-link-settings">
-          <i class="fas fa-cog"></i>
-          <span>Settings</span>
-        </a>
-      </nav>
+      </main>
     </div>
   `;
   

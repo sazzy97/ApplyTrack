@@ -4343,18 +4343,7 @@ input:checked + .slider:before {
 
   /* Mobile Bottom Navigation Bar */
   .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 64px;
-    background-color: var(--color-surface);
-    border-top: 1px solid var(--color-border);
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 1000;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    display: none !important;
   }
   
   .bottom-nav-item {
@@ -4524,10 +4513,9 @@ input:checked + .slider:before {
     color: var(--color-secondary);
   }
 
-  /* Content offsets to clear mobile Header/Footer */
   .app-content-pane {
-    padding-top: 76px !important;
-    padding-bottom: 84px !important;
+    padding-top: 0px !important;
+    padding-bottom: 24px !important;
     padding-left: 16px !important;
     padding-right: 16px !important;
   }
@@ -4978,6 +4966,10 @@ input:checked + .slider:before {
   }
 
   body.demo-mode-active .navbar {
+    top: 40px !important;
+  }
+
+  body.demo-mode-active .mobile-header {
     top: 40px !important;
   }
 
