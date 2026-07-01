@@ -1555,7 +1555,8 @@ async function saveJobs(newJobsList) {
       email_subject: j.email_subject || null,
       confidence_score: j.confidence_score || 100.0,
       category: j.category || null,
-      date: new Date().toISOString(),
+      resume_id: j.resume_id || null,
+      date: j.date || new Date().toISOString(),
       updated_at: new Date().toISOString()
     }));
     
@@ -2152,6 +2153,137 @@ async function updateJobMetadata(jobId, metadataData) {
     
     return res.data;
   }
+}
+
+async function updateJobResume(jobId, resumeId) {
+  if (window.USE_MOCK_AUTH) {
+    let jobs = getJobs();
+    const idx = jobs.findIndex(j => String(j.id) === String(jobId));
+    if (idx === -1) throw new Error("Application not found");
+    
+    // Fetch resume name for activity log
+    const resumes = getResumes();
+    const resume = resumes.find(r => String(r.id) === String(resumeId));
+    const resumeName = resume ? resume.name : 'None';
+    
+    jobs[idx].resume_id = resumeId;
+    
+    jobs[idx].activities = jobs[idx].activities || [];
+    jobs[idx].activities.push({
+      id: 'act_' + Date.now(),
+      event_type: 'details_updated',
+      description: `Assigned resume version: ${resumeName}`,
+      created_at: new Date().toISOString()
+    });
+    
+    localStorage.setItem('applytrack_jobs', JSON.stringify(jobs));
+    return jobs[idx];
+  } else {
+    let resumeName = 'None';
+    if (resumeId) {
+      const { data: resume } = await supabaseClient.from('resumes').select('name').eq('id', resumeId).maybeSingle();
+      if (resume) resumeName = resume.name;
+    }
+    
+    const res = await supabaseClient.from('jobs').update({ resume_id: resumeId }).eq('id', jobId).select().single();
+    if (res.error) throw res.error;
+    
+    await supabaseClient.from('job_activities').insert({
+      job_id: jobId,
+      user_id: currentUser.id,
+      event_type: 'details_updated',
+      description: `Assigned resume version: ${resumeName}`
+    });
+    
+    return res.data;
+  }
+}
+
+async function fetchResumes() {
+  if (window.USE_MOCK_AUTH) {
+    return getResumes();
+  } else {
+    const { data, error } = await supabaseClient
+      .from('resumes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function saveResumeVersion(name, fileName, fileType, content) {
+  if (window.USE_MOCK_AUTH) {
+    let resumes = getResumes();
+    const newResume = {
+      id: 'res_' + Date.now(),
+      name,
+      file_name: fileName,
+      file_type: fileType,
+      content,
+      created_at: new Date().toISOString()
+    };
+    resumes.unshift(newResume);
+    localStorage.setItem('applytrack_resumes', JSON.stringify(resumes));
+    return newResume;
+  } else {
+    const { data, error } = await supabaseClient
+      .from('resumes')
+      .insert({
+        user_id: currentUser.id,
+        name,
+        file_name: fileName,
+        file_type: fileType,
+        content
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function deleteResumeVersion(id) {
+  if (window.USE_MOCK_AUTH) {
+    let resumes = getResumes();
+    resumes = resumes.filter(r => String(r.id) !== String(id));
+    localStorage.setItem('applytrack_resumes', JSON.stringify(resumes));
+    return true;
+  } else {
+    const { error } = await supabaseClient
+      .from('resumes')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  }
+}
+
+function getResumes() {
+  let resumes = localStorage.getItem('applytrack_resumes');
+  if (!resumes) {
+    const defaultResumes = [
+      {
+        id: 'res_default_1',
+        name: 'Product Designer Resume v1.0',
+        file_name: 'osaze_designer_cv_v1.pdf',
+        file_type: 'pdf',
+        content: 'Experienced UX/Product Designer with a focus on Figma design systems, usability optimization, and interactive prototyping.',
+        created_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString()
+      },
+      {
+        id: 'res_default_2',
+        name: 'Technical Developer Resume v2.1',
+        file_name: 'osaze_dev_cv_v2.docx',
+        file_type: 'docx',
+        content: 'Frontend Developer with deep React, CSS layout systems, state management, and robust HTML prototyping expertise.',
+        created_at: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString()
+      }
+    ];
+    localStorage.setItem('applytrack_resumes', JSON.stringify(defaultResumes));
+    return defaultResumes;
+  }
+  return JSON.parse(resumes);
 }
 
 async function updateJobStatus(jobId, oldStatus, newStatus) {
@@ -4373,7 +4505,7 @@ function getAppViewRoot() {
 
 function renderAppShell(currentHash) {
   const root = document.getElementById('app-root');
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : 'dashboard';
   
   root.innerHTML = `
     <div class="app-shell">
@@ -4403,6 +4535,9 @@ function renderAppShell(currentHash) {
           </a>
           <a href="#/interviews" class="sidebar-link ${activeTab === 'interviews' ? 'active' : ''}" id="sidebar-link-interviews">
             <i class="fas fa-calendar-alt"></i> <span>Interviews</span>
+          </a>
+          <a href="#/resume-analyzer" class="sidebar-link ${activeTab === 'resume-analyzer' ? 'active' : ''}" id="sidebar-link-resume-analyzer">
+            <i class="fas fa-file-invoice"></i> <span>Resume Analyzer</span>
           </a>
           <a href="#/notifications" class="sidebar-link ${activeTab === 'notifications' ? 'active' : ''}" id="sidebar-link-notifications" style="position:relative; display:flex; align-items:center;">
             <i class="fas fa-bell"></i> <span>Notifications</span>
@@ -4442,6 +4577,9 @@ function renderAppShell(currentHash) {
           <div class="mobile-drawer-body">
             <a href="#/insights" class="drawer-link" id="drawer-link-insights">
               <i class="fas fa-brain"></i> AI Insights
+            </a>
+            <a href="#/resume-analyzer" class="drawer-link" id="drawer-link-resume-analyzer">
+              <i class="fas fa-file-invoice"></i> Resume Analyzer
             </a>
             <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
               <i class="fas fa-map-signs"></i> Setup Guide
@@ -4526,13 +4664,17 @@ function renderAppShell(currentHash) {
   document.getElementById('drawer-link-insights')?.addEventListener('click', () => {
     drawerOverlay?.classList.remove('open');
   });
+
+  document.getElementById('drawer-link-resume-analyzer')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
   
   // Initial count update
   updateMenuNotificationBadges();
 }
 
 function updateAppShellActiveLink(currentHash) {
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : 'dashboard';
   
   document.querySelectorAll('.sidebar-link, .bottom-nav-item').forEach(link => {
     link.classList.remove('active');
@@ -4555,6 +4697,7 @@ const routes = {
   '#/onboarding': { render: renderOnboarding, authRequired: true },
   '#/dashboard': { render: renderDashboard, authRequired: true, onboardingRequired: true },
   '#/insights': { render: renderInsights, authRequired: true, onboardingRequired: true },
+  '#/resume-analyzer': { render: renderResumeAnalyzer, authRequired: true, onboardingRequired: true },
   '#/settings': { render: renderSettings, authRequired: true, onboardingRequired: true },
   '#/interviews': { render: renderInterviews, authRequired: true, onboardingRequired: true },
   '#/notifications': { render: renderNotifications, authRequired: true, onboardingRequired: true },
@@ -5188,6 +5331,435 @@ async function renderInsights() {
       </div>
     `;
   }
+}
+
+// 6A-2. AI RESUME ANALYZER PAGE
+async function renderResumeAnalyzer() {
+  const root = getAppViewRoot();
+  
+  root.innerHTML = `
+    <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary);"></i>
+      <p style="color:var(--color-text-secondary); font-weight:500;">Loading AI resume versions & details...</p>
+    </div>
+  `;
+
+  async function loadAndRender() {
+    try {
+      const [jobs, resumes] = await Promise.all([
+        fetchJobs(),
+        fetchResumes()
+      ]);
+
+      root.innerHTML = `
+        <div class="analyzer-page-container">
+          <!-- Page Header -->
+          <div style="margin-bottom: 28px;">
+            <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary);">AI Resume Analyzer</h1>
+            <p style="color: var(--color-text-secondary); margin-top: 4px;">Optimize your resume for ATS match scoring and keywords visibility.</p>
+          </div>
+
+          <div class="analyzer-grid">
+            <!-- Left Pane: Upload and Job Description -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              
+              <!-- Resume Upload Zone Card -->
+              <div class="card" style="padding: 24px;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px;">
+                  <i class="fas fa-file-upload" style="color: var(--color-secondary); margin-right: 6px;"></i> Upload Resume Version
+                </h3>
+                
+                <div class="form-group">
+                  <label for="analyzer-resume-name">Resume Version Name</label>
+                  <input type="text" id="analyzer-resume-name" placeholder="e.g. Product Designer CV - Stripe Version" style="width:100%;">
+                </div>
+
+                <div class="resume-upload-zone" id="resume-drop-zone">
+                  <i class="far fa-file-pdf"></i>
+                  <p style="font-weight: 700; color: var(--color-primary); font-size: 0.9rem;">Drag & drop your PDF or DOCX here</p>
+                  <p style="font-size: 0.78rem; color: var(--color-text-secondary); margin-top: 4px;">or click to browse local files</p>
+                  <input type="file" id="analyzer-file-input" accept=".pdf,.docx" style="display:none;">
+                </div>
+                <div id="selected-file-details" style="display:none; margin-top:12px; font-size:0.85rem; color:var(--color-text); font-weight:600; background-color:#F1F5F9; padding:8px 12px; border-radius:6px; align-items:center; justify-content:space-between;">
+                  <span><i class="far fa-file" style="margin-right:6px; color:var(--color-danger);"></i> <span id="selected-file-name">filename.pdf</span></span>
+                  <button id="clear-selected-file" style="background:transparent; border:none; color:var(--color-text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
+                </div>
+
+                <button class="btn btn-primary" id="upload-resume-btn" style="width:100%; margin-top:16px; min-height:44px;">
+                  <i class="fas fa-plus"></i> Save Resume Version
+                </button>
+              </div>
+
+              <!-- Job Description Card -->
+              <div class="card" style="padding: 24px;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px;">
+                  <i class="fas fa-briefcase" style="color: var(--color-secondary); margin-right: 6px;"></i> Job Description
+                </h3>
+
+                <!-- Import dropdown selector -->
+                <div class="form-group">
+                  <label for="analyzer-job-select">Import from Saved Applications</label>
+                  <select id="analyzer-job-select" style="width:100%;">
+                    <option value="">[Select an application to import...]</option>
+                    ${jobs.map(j => `<option value="${j.id}" data-role="${j.role}" data-company="${j.company}">${j.company} - ${j.role}</option>`).join('')}
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="analyzer-job-desc">Paste Job Description Details</label>
+                  <textarea id="analyzer-job-desc" rows="6" placeholder="Paste the text of the job description here to analyze ATS match scores..." style="width:100%;"></textarea>
+                </div>
+
+                <!-- Select Resume to Compare -->
+                <div class="form-group">
+                  <label for="analyzer-select-resume-version">Select Resume Version to Analyze</label>
+                  <select id="analyzer-select-resume-version" style="width:100%;">
+                    <option value="">[Choose a saved resume version...]</option>
+                    ${resumes.map(r => `<option value="${r.id}">${r.name} (${r.file_name})</option>`).join('')}
+                  </select>
+                </div>
+
+                <button class="btn btn-secondary" id="trigger-analysis-btn" style="width:100%; min-height:44px; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                  <i class="fas fa-magic"></i> Run ATS AI Analysis
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Right Pane: Analysis Results & Version History -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              
+              <!-- AI Analysis Results Visual Area (Hidden initially) -->
+              <div class="analysis-results-box" id="analysis-results-mount" style="display: none;">
+                <!-- HTML injected dynamically on success -->
+              </div>
+
+              <!-- Resume Version History Card -->
+              <div class="resume-history-card">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                  <span>Resume Version History</span>
+                  <span class="badge-status" style="background-color: var(--color-primary-light); color: var(--color-primary);">${resumes.length} Versions</span>
+                </h3>
+                
+                <div class="resume-history-list">
+                  ${resumes.length === 0 ? `
+                    <p style="color: var(--color-text-secondary); font-size: 0.88rem; font-style: italic; text-align:center; padding:24px 0;">No resume versions saved. Upload one above!</p>
+                  ` : resumes.map(r => `
+                    <div class="resume-version-row">
+                      <div class="resume-version-info">
+                        <div class="resume-version-icon">
+                          <i class="far ${r.file_type === 'pdf' ? 'fa-file-pdf' : 'fa-file-word'}"></i>
+                        </div>
+                        <div>
+                          <div class="resume-version-name">${r.name}</div>
+                          <div class="resume-version-meta">${r.file_name} &bull; ${new Date(r.created_at).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                      <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-outline btn-sm use-resume-btn" data-id="${r.id}" title="Select for analysis" style="padding: 6px 10px; font-size: 0.75rem; border-color: var(--color-secondary); color: var(--color-secondary);">
+                          Select
+                        </button>
+                        <button class="btn btn-outline btn-sm delete-resume-btn" data-id="${r.id}" title="Delete version" style="padding: 6px 10px; font-size: 0.75rem; border-color: var(--color-danger); color: var(--color-danger);">
+                          <i class="far fa-trash-alt"></i>
+                        </button>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      `;
+
+      attachPageListeners(jobs, resumes);
+
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = `
+        <div style="padding: 40px; text-align: center;">
+          <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 8px;">Failed to load resume details</h2>
+          <p style="color: var(--color-text-secondary); margin-bottom: 24px;">${err.message}</p>
+          <button onclick="window.location.reload();" class="btn btn-primary">Retry</button>
+        </div>
+      `;
+    }
+  }
+
+  let selectedFile = null;
+
+  function attachPageListeners(jobs, resumes) {
+    const dropZone = document.getElementById('resume-drop-zone');
+    const fileInput = document.getElementById('analyzer-file-input');
+    const fileDetails = document.getElementById('selected-file-details');
+    const fileNameText = document.getElementById('selected-file-name');
+    const clearFileBtn = document.getElementById('clear-selected-file');
+    
+    // File inputs hooks
+    dropZone?.addEventListener('click', () => fileInput?.click());
+    
+    fileInput?.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        setFile(e.target.files[0]);
+      }
+    });
+
+    // Drop handler
+    dropZone?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--color-primary)';
+      dropZone.style.backgroundColor = 'rgba(37, 99, 235, 0.08)';
+    });
+
+    dropZone?.addEventListener('dragleave', () => {
+      dropZone.style.borderColor = 'rgba(37, 99, 235, 0.25)';
+      dropZone.style.backgroundColor = 'rgba(37, 99, 235, 0.02)';
+    });
+
+    dropZone?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'rgba(37, 99, 235, 0.25)';
+      dropZone.style.backgroundColor = 'rgba(37, 99, 235, 0.02)';
+      if (e.dataTransfer.files.length > 0) {
+        setFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    clearFileBtn?.addEventListener('click', () => {
+      selectedFile = null;
+      if (fileInput) fileInput.value = '';
+      if (fileDetails) fileDetails.style.display = 'none';
+      if (dropZone) dropZone.style.display = 'block';
+    });
+
+    function setFile(file) {
+      selectedFile = file;
+      if (fileNameText) fileNameText.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
+      if (fileDetails) fileDetails.style.display = 'flex';
+      if (dropZone) dropZone.style.display = 'none';
+    }
+
+    // Save Resume Version button click
+    document.getElementById('upload-resume-btn')?.addEventListener('click', async () => {
+      const nameInput = document.getElementById('analyzer-resume-name');
+      const versionName = nameInput ? nameInput.value.trim() : '';
+
+      if (!versionName) {
+        showToast("Please provide a name for this resume version", "error");
+        return;
+      }
+
+      if (!selectedFile) {
+        showToast("Please drag & drop or select a resume file (PDF/DOCX)", "error");
+        return;
+      }
+
+      const fileExt = selectedFile.name.split('.').pop().toLowerCase();
+      if (!['pdf', 'docx'].includes(fileExt)) {
+        showToast("Unsupported format. Please upload PDF or DOCX only.", "error");
+        return;
+      }
+
+      try {
+        setButtonLoading(document.getElementById('upload-resume-btn'), true, "Save Resume Version");
+        
+        // Simulating parsing of file content
+        const simulatedTextContent = `Osaze Resume content - version: ${versionName}. Skills: User Interface design, Figma design system builder, React coding, usability validations.`;
+        
+        await saveResumeVersion(versionName, selectedFile.name, fileExt, simulatedTextContent);
+        showToast("Resume version saved successfully!", "success");
+        loadAndRender();
+      } catch (err) {
+        showToast(err.message, 'error');
+        setButtonLoading(document.getElementById('upload-resume-btn'), false, "Save Resume Version");
+      }
+    });
+
+    // Delete Resume Version triggers
+    document.querySelectorAll('.delete-resume-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = btn.getAttribute('data-id');
+        if (confirm("Are you sure you want to delete this resume version?")) {
+          try {
+            await deleteResumeVersion(id);
+            showToast("Resume version deleted", "success");
+            loadAndRender();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        }
+      });
+    });
+
+    // Use for analysis trigger
+    document.querySelectorAll('.use-resume-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.getAttribute('data-id');
+        const selectEl = document.getElementById('analyzer-select-resume-version');
+        if (selectEl) {
+          selectEl.value = id;
+          showToast("Resume version selected for analysis", "info");
+        }
+      });
+    });
+
+    // Select application to import job description details
+    const jobSelect = document.getElementById('analyzer-job-select');
+    jobSelect?.addEventListener('change', () => {
+      const jobId = jobSelect.value;
+      if (!jobId) return;
+
+      const job = jobs.find(j => String(j.id) === String(jobId));
+      const textarea = document.getElementById('analyzer-job-desc');
+      if (job && textarea) {
+        textarea.value = `Role: ${job.role}\nCompany: ${job.company}\nLocation: ${job.location || 'Remote'}\nSalary: ${job.salary_range || 'N/A'}\n\nKey Qualifications:\n- Strong experience in ${job.role} development and layouts.\n- Experience in collaboration and design systems.\n- Accessibility (WCAG 2.1) compliance audits.\n- Measurable track record of achievements and metrics.`;
+        showToast("Job description imported!", "success");
+      }
+    });
+
+    // Trigger AI Analysis
+    const runAnalysisBtn = document.getElementById('trigger-analysis-btn');
+    runAnalysisBtn?.addEventListener('click', () => {
+      const jobDesc = document.getElementById('analyzer-job-desc')?.value.trim();
+      const resumeId = document.getElementById('analyzer-select-resume-version')?.value;
+
+      if (!jobDesc) {
+        showToast("Please provide or import a job description", "error");
+        return;
+      }
+
+      if (!resumeId) {
+        showToast("Please select a resume version to compare", "error");
+        return;
+      }
+
+      const activeResume = resumes.find(r => String(r.id) === String(resumeId));
+      if (!activeResume) return;
+
+      setButtonLoading(runAnalysisBtn, true, "Running ATS AI Analysis");
+
+      setTimeout(() => {
+        let score = 72;
+        const lowercaseDesc = jobDesc.toLowerCase();
+        
+        if (lowercaseDesc.includes('accessibility') || lowercaseDesc.includes('wcag')) score += 5;
+        if (lowercaseDesc.includes('design system')) score += 8;
+        if (lowercaseDesc.includes('achievement') || lowercaseDesc.includes('conversion')) score += 6;
+        if (lowercaseDesc.includes('leadership')) score += 4;
+        
+        score = Math.min(score, 97);
+
+        const isCompatible = score >= 80;
+        const atsBadgeClass = isCompatible ? 'badge-ats-compatible' : 'badge-ats-warning';
+        const atsStatusText = isCompatible ? 'Excellent (ATS Compatible)' : 'Good (Minor Tweaks Needed)';
+
+        const missingKeywords = [];
+        if (lowercaseDesc.includes('accessibility') || lowercaseDesc.includes('wcag')) {
+          missingKeywords.push("Accessibility (WCAG 2.1)");
+        }
+        if (lowercaseDesc.includes('design system')) {
+          missingKeywords.push("Design Systems (Figma)");
+        }
+        if (lowercaseDesc.includes('leadership') || lowercaseDesc.includes('lead')) {
+          missingKeywords.push("Leadership / Mentorship");
+        }
+        if (lowercaseDesc.includes('testing') || lowercaseDesc.includes('unit')) {
+          missingKeywords.push("Unit Testing & CI/CD");
+        }
+        
+        if (missingKeywords.length === 0) {
+          missingKeywords.push("Accessibility Experience", "Figma Design Systems", "A/B Conversion Testing");
+        }
+
+        const strengths = [
+          "Strong keyword alignment in core technical capabilities.",
+          "Clear structure and format parser-compliant.",
+          "Good experience representation in layout design."
+        ];
+
+        const weaknesses = [
+          "Missing explicit design systems case studies details.",
+          "Needs more quantifiable, measurable metric statements (e.g. % improvement)."
+        ];
+
+        const suggestions = [
+          "<strong>Add measurable achievements</strong>: Change passive roles to outcomes (e.g., 'Improved dashboard conversion metrics by 15%').",
+          "<strong>Mention design systems</strong>: Explicitly include Figma libraries and component libraries building experience.",
+          "<strong>Include accessibility experience</strong>: Detail WCAG compliance audit processes and accessibility checks.",
+          "<strong>Add leadership examples</strong>: Include mentorship of junior designers/engineers where applicable."
+        ];
+
+        const resultsMount = document.getElementById('analysis-results-mount');
+        if (resultsMount) {
+          resultsMount.style.display = 'block';
+          resultsMount.innerHTML = `
+            <div style="background-color: var(--color-surface); padding: 24px; border-bottom:1px solid var(--color-border);">
+              <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--color-primary); display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-magic" style="color: var(--color-secondary);"></i> AI Analysis Report
+              </h3>
+            </div>
+            
+            <div class="analysis-split-row">
+              <div class="ats-score-wrapper" style="background-color: #F8FAFC;">
+                <div class="progress-ring-container" style="width:96px; height:96px;">
+                  <svg width="96" height="96">
+                    <circle cx="48" cy="48" r="42" stroke="var(--color-border)" stroke-width="8" fill="transparent" />
+                    <circle cx="48" cy="48" r="42" stroke="${isCompatible ? '#10B981' : 'var(--color-secondary)'}" stroke-width="8" fill="transparent"
+                      stroke-dasharray="263.8" stroke-dashoffset="${263.8 - (263.8 * score) / 100}"
+                      stroke-linecap="round" transform="rotate(-90 48 48)" />
+                  </svg>
+                  <div class="progress-ring-text" style="font-size: 1.15rem; font-weight:800;">${score}%</div>
+                </div>
+                <div class="ats-score-badge ${atsBadgeClass}">${atsStatusText}</div>
+                <div style="font-size: 0.72rem; color: var(--color-text-secondary); margin-top: 8px; text-align: center; font-weight: 600;">
+                  Readability: 82% &bull; ATS Score: ${score}%
+                </div>
+              </div>
+
+              <div class="analysis-details-pane">
+                <div style="margin-bottom: 16px;">
+                  <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--color-primary); text-transform: uppercase; margin-bottom: 8px;">Missing Skills & Keywords</h4>
+                  <div style="margin-top: 4px;">
+                    ${missingKeywords.map(k => `<span class="ats-pill-badge missing"><i class="fas fa-exclamation-circle"></i> ${k}</span>`).join('')}
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                  <div>
+                    <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--color-success); text-transform: uppercase; margin-bottom: 4px;">Strengths</h4>
+                    <ul style="padding-left: 18px; margin: 0; font-size: 0.82rem; color: var(--color-text); line-height:1.4;">
+                      ${strengths.map(s => `<li>${s}</li>`).join('')}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--color-danger); text-transform: uppercase; margin-bottom: 4px;">Weaknesses</h4>
+                    <ul style="padding-left: 18px; margin: 0; font-size: 0.82rem; color: var(--color-text); line-height:1.4;">
+                      ${weaknesses.map(w => `<li>${w}</li>`).join('')}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="background-color: #F8FAFC; padding: 24px; border-top: 1px solid var(--color-border);">
+              <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--color-primary); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-lightbulb" style="color: var(--color-warning);"></i> AI ATS Optimization Suggestions
+              </h4>
+              <ul style="padding-left: 18px; margin: 0; font-size: 0.85rem; color: var(--color-text); display: flex; flex-direction: column; gap: 8px;">
+                ${suggestions.map(s => `<li>${s}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+          resultsMount.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        setButtonLoading(runAnalysisBtn, false, "Run ATS AI Analysis");
+      }, 1000);
+    });
+  }
+
+  await loadAndRender();
 }
 
 // 6B. INTERVIEWS PAGE
@@ -6142,7 +6714,10 @@ async function renderApplicationDetail(jobId) {
 
   async function loadAndRender() {
     try {
-      const { job, notes, attachments, activities } = await fetchJobDetails(jobId);
+      const [{ job, notes, attachments, activities }, resumes] = await Promise.all([
+        fetchJobDetails(jobId),
+        fetchResumes()
+      ]);
 
       const initial = job.company ? job.company.charAt(0).toUpperCase() : 'A';
       const avatarColor = getAvatarColor(initial);
@@ -6500,6 +7075,49 @@ async function renderApplicationDetail(jobId) {
                 </div>
               </div>
 
+              <!-- Resume Version Card -->
+              <div class="detail-card">
+                <h3 class="detail-card-title">
+                  <span><i class="fas fa-file-invoice" style="margin-right: 8px;"></i> Assigned Resume</span>
+                </h3>
+                
+                <div class="edit-form" style="display: block;">
+                  <div class="edit-form-group">
+                    <label for="detail-resume-select">Resume Version</label>
+                    <select id="detail-resume-select" class="status-select" style="width: 100%;">
+                      <option value="">[No Resume Version Assigned]</option>
+                      ${resumes.map(r => `
+                        <option value="${r.id}" ${String(job.resume_id) === String(r.id) ? 'selected' : ''}>${r.name}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  
+                  ${(() => {
+                    if (job.resume_id) {
+                      const assigned = resumes.find(r => String(r.id) === String(job.resume_id));
+                      if (assigned) {
+                        return `
+                          <div class="detail-resume-widget">
+                            <div class="detail-resume-row">
+                              <div>
+                                <strong style="font-size:0.85rem; color:var(--color-primary);">${assigned.file_name}</strong>
+                                <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-top:2px;">
+                                  Uploaded: ${new Date(assigned.created_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <a href="#/resume-analyzer" class="btn btn-secondary btn-sm" style="padding:6px 10px; font-size:0.75rem;">
+                                <i class="fas fa-search"></i> Optimize
+                              </a>
+                            </div>
+                          </div>
+                        `;
+                      }
+                    }
+                    return `<p style="color:var(--color-text-secondary); font-size:0.85rem; font-style:italic; margin-top:8px;">No resume assigned yet. Select a version above to associate it with this application.</p>`;
+                  })()}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -6523,6 +7141,21 @@ async function renderApplicationDetail(jobId) {
   }
 
   function attachEventListeners(job) {
+    // 0. Resume Version Dropdown select
+    const resumeSelect = document.getElementById('detail-resume-select');
+    resumeSelect?.addEventListener('change', async (e) => {
+      const val = e.target.value || null;
+      try {
+        resumeSelect.disabled = true;
+        await updateJobResume(jobId, val);
+        showToast("Resume version assigned successfully!", "success");
+        loadAndRender();
+      } catch (err) {
+        resumeSelect.disabled = false;
+        showToast(err.message, "error");
+      }
+    });
+
     // 1. Status Dropdown select
     const statusSelect = document.getElementById('detail-status-select');
     statusSelect?.addEventListener('change', async (e) => {

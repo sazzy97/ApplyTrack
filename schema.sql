@@ -273,3 +273,37 @@ CREATE POLICY "Allow individual delete access to own notifications"
 ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS follow_up_date TIMESTAMP WITH TIME ZONE;
 ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS follow_up_status TEXT DEFAULT 'none' NOT NULL;
 ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS last_follow_up TIMESTAMP WITH TIME ZONE;
+
+-- ==========================================================================
+-- MILESTONE 11: AI RESUME ANALYZER
+-- ==========================================================================
+
+-- Create resumes table to store multiple versions
+CREATE TABLE IF NOT EXISTS public.resumes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  file_type TEXT NOT NULL,
+  content TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS) on resumes
+ALTER TABLE public.resumes ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for resumes access
+CREATE POLICY "Allow individual read access to own resumes"
+  ON public.resumes FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual insert access to own resumes"
+  ON public.resumes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual delete access to own resumes"
+  ON public.resumes FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Alter jobs table to link a resume version to each application
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS resume_id UUID REFERENCES public.resumes(id) ON DELETE SET NULL;

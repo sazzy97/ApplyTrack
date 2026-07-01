@@ -5277,6 +5277,204 @@ input:checked + .slider:before {
   transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ==========================================================================
+   MILESTONE 11: AI RESUME ANALYZER STYLES
+   ========================================================================== */
+
+.analyzer-page-container {
+  margin: -40px;
+  padding: 32px;
+  background-color: var(--color-bg);
+  min-height: calc(100vh - 80px);
+}
+
+@media (max-width: 768px) {
+  .analyzer-page-container {
+    margin: -24px -16px;
+    padding: 16px;
+  }
+}
+
+/* Upload zone */
+.resume-upload-zone {
+  border: 2px dashed rgba(37, 99, 235, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  text-align: center;
+  background-color: rgba(37, 99, 235, 0.02);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.resume-upload-zone:hover {
+  border-color: var(--color-secondary);
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+.resume-upload-zone i {
+  font-size: 2.5rem;
+  color: var(--color-secondary);
+  margin-bottom: 12px;
+}
+
+/* Version history rows */
+.resume-history-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.resume-version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  background-color: var(--color-surface);
+}
+
+.resume-version-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.resume-version-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #EF4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.resume-version-name {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 0.92rem;
+}
+
+.resume-version-meta {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* Split Pane grids */
+.analyzer-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr;
+  gap: 28px;
+}
+
+@media (max-width: 1024px) {
+  .analyzer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Interactive Match Score indicators */
+.ats-score-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  border-right: 1px solid var(--color-border);
+}
+
+@media (max-width: 600px) {
+  .ats-score-wrapper {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 24px;
+    margin-bottom: 24px;
+  }
+}
+
+.ats-score-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  margin-top: 12px;
+}
+
+.badge-ats-compatible {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.badge-ats-warning {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.analysis-results-box {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.analysis-split-row {
+  display: flex;
+}
+
+@media (max-width: 600px) {
+  .analysis-split-row {
+    flex-direction: column;
+  }
+}
+
+.analysis-details-pane {
+  padding: 24px;
+  flex-grow: 1;
+}
+
+.ats-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #F1F5F9;
+  color: #475569;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin: 0 6px 6px 0;
+}
+
+.ats-pill-badge.missing {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+/* Resume detail widget */
+.detail-resume-widget {
+  background-color: #F8FAFC;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.detail-resume-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 
 
 
