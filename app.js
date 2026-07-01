@@ -3233,6 +3233,11 @@ async function renderDashboard() {
 
     root.innerHTML = `
       <div class="dashboard-page-container">
+        <!-- Page Header -->
+        <div style="margin-bottom: 28px;">
+          <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary);">Application Pipeline</h1>
+          <p style="color: var(--color-text-secondary); margin-top: 4px;">Track your job application statuses, interviews, assessments, and follow-ups in one centralized place.</p>
+        </div>
         
         <!-- Error Alert Banner -->
         ${isError ? `
@@ -5365,8 +5370,8 @@ async function renderResumeAnalyzer() {
               
               <!-- Resume Upload Zone Card -->
               <div class="card" style="padding: 24px;">
-                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px;">
-                  <i class="fas fa-file-upload" style="color: var(--color-secondary); margin-right: 6px;"></i> Upload Resume Version
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
+                  <i class="fas fa-file-upload" style="color: #2563EB;"></i> Upload Resume Version
                 </h3>
                 
                 <div class="form-group">
@@ -5374,10 +5379,13 @@ async function renderResumeAnalyzer() {
                   <input type="text" id="analyzer-resume-name" placeholder="e.g. Product Designer CV - Stripe Version" style="width:100%;">
                 </div>
 
-                <div class="resume-upload-zone" id="resume-drop-zone">
-                  <i class="far fa-file-pdf"></i>
-                  <p style="font-weight: 700; color: var(--color-primary); font-size: 0.9rem;">Drag & drop your PDF or DOCX here</p>
-                  <p style="font-size: 0.78rem; color: var(--color-text-secondary); margin-top: 4px;">or click to browse local files</p>
+                <div class="resume-upload-zone" id="resume-drop-zone" style="border: 1px dashed #2563EB; border-radius: var(--radius-md); padding: 32px 24px; text-align: center; background-color: #F8FAFC; cursor: pointer; transition: all var(--transition-fast);">
+                  <div style="width: 48px; height: 48px; background-color: #FFFFFF; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: var(--shadow-sm); border: 1px solid var(--color-border);">
+                    <i class="far fa-file-pdf" style="font-size: 1.4rem; color: #2563EB;"></i>
+                  </div>
+                  <p style="font-weight: 700; color: var(--color-primary); font-size: 0.95rem; margin-bottom: 4px;">Drag & drop your PDF or DOCX here</p>
+                  <p style="font-size: 0.78rem; color: var(--color-text-secondary); margin-bottom: 12px; line-height: 1.4;">Maximum file size 10MB. High resolution PDF<br>recommended for better parsing.</p>
+                  <p style="font-size: 0.85rem; color: #2563EB; font-weight: 700; text-decoration: underline; margin: 0;">or click to browse local files</p>
                   <input type="file" id="analyzer-file-input" accept=".pdf,.docx" style="display:none;">
                 </div>
                 <div id="selected-file-details" style="display:none; margin-top:12px; font-size:0.85rem; color:var(--color-text); font-weight:600; background-color:#F1F5F9; padding:8px 12px; border-radius:6px; align-items:center; justify-content:space-between;">
@@ -5385,24 +5393,27 @@ async function renderResumeAnalyzer() {
                   <button id="clear-selected-file" style="background:transparent; border:none; color:var(--color-text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
                 </div>
 
-                <button class="btn btn-primary" id="upload-resume-btn" style="width:100%; margin-top:16px; min-height:44px;">
-                  <i class="fas fa-plus"></i> Save Resume Version
+                <button class="btn btn-primary" id="upload-resume-btn" style="width:100%; margin-top:16px; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:700;">
+                  <span style="border: 1.5px solid white; border-radius: 50%; width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; margin-right: 4px;">+</span> Save Resume Version
                 </button>
               </div>
 
               <!-- Job Description Card -->
               <div class="card" style="padding: 24px;">
-                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px;">
-                  <i class="fas fa-briefcase" style="color: var(--color-secondary); margin-right: 6px;"></i> Job Description
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
+                  <i class="fas fa-briefcase" style="color: #2563EB;"></i> Job Description
                 </h3>
 
                 <!-- Import dropdown selector -->
                 <div class="form-group">
                   <label for="analyzer-job-select">Import from Saved Applications</label>
-                  <select id="analyzer-job-select" style="width:100%;">
-                    <option value="">[Select an application to import...]</option>
-                    ${jobs.map(j => `<option value="${j.id}" data-role="${j.role}" data-company="${j.company}">${j.company} - ${j.role}</option>`).join('')}
-                  </select>
+                  <div style="position:relative;">
+                    <select id="analyzer-job-select" style="width:100%; -webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px;">
+                      <option value="">[Select an application to import...]</option>
+                      ${jobs.map(j => `<option value="${j.id}" data-role="${j.role}" data-company="${j.company}">${j.company} - ${j.role}</option>`).join('')}
+                    </select>
+                    <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.8rem;"></i>
+                  </div>
                 </div>
 
                 <div class="form-group">
@@ -5413,14 +5424,17 @@ async function renderResumeAnalyzer() {
                 <!-- Select Resume to Compare -->
                 <div class="form-group">
                   <label for="analyzer-select-resume-version">Select Resume Version to Analyze</label>
-                  <select id="analyzer-select-resume-version" style="width:100%;">
-                    <option value="">[Choose a saved resume version...]</option>
-                    ${resumes.map(r => `<option value="${r.id}">${r.name} (${r.file_name})</option>`).join('')}
-                  </select>
+                  <div style="position:relative;">
+                    <select id="analyzer-select-resume-version" style="width:100%; -webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px;">
+                      <option value="">[Choose a saved resume version...]</option>
+                      ${resumes.map(r => `<option value="${r.id}">${r.name} (${r.file_name})</option>`).join('')}
+                    </select>
+                    <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.8rem;"></i>
+                  </div>
                 </div>
 
-                <button class="btn btn-secondary" id="trigger-analysis-btn" style="width:100%; min-height:44px; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                  <i class="fas fa-magic"></i> Run ATS AI Analysis
+                <button class="btn" id="trigger-analysis-btn" style="width:100%; min-height:44px; margin-top:16px; display:flex; align-items:center; justify-content:center; gap:8px; background: transparent; border: 1.5px solid #2563EB; color: #2563EB; font-weight: 700; transition: all var(--transition-fast);">
+                  <i class="fas fa-tachometer-alt" style="font-size: 1rem;"></i> Run ATS AI Analysis
                 </button>
               </div>
 
@@ -5435,39 +5449,54 @@ async function renderResumeAnalyzer() {
               </div>
 
               <!-- Resume Version History Card -->
-              <div class="resume-history-card">
+              <div class="resume-history-card" style="padding: 24px;">
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
-                  <span>Resume Version History</span>
-                  <span class="badge-status" style="background-color: var(--color-primary-light); color: var(--color-primary);">${resumes.length} Versions</span>
+                  <span><i class="fas fa-history" style="color: #2563EB; margin-right: 6px;"></i> Resume Version History</span>
+                  <span class="badge-status" style="background-color: #2563EB; color: #FFFFFF; font-size: 0.68rem; font-weight: 800; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">
+                    ${resumes.length} ${resumes.length === 1 ? 'Version' : 'Versions'}
+                  </span>
                 </h3>
                 
                 <div class="resume-history-list">
                   ${resumes.length === 0 ? `
                     <p style="color: var(--color-text-secondary); font-size: 0.88rem; font-style: italic; text-align:center; padding:24px 0;">No resume versions saved. Upload one above!</p>
                   ` : resumes.map(r => `
-                    <div class="resume-version-row">
-                      <div class="resume-version-info">
-                        <div class="resume-version-icon">
+                    <div class="resume-version-row" style="background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
+                      <div class="resume-version-info" style="display: flex; align-items: center; gap: 12px;">
+                        <div class="resume-version-icon" style="width: 40px; height: 40px; border-radius: var(--radius-md); background-color: ${r.file_type === 'pdf' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(37, 99, 235, 0.08)'}; color: ${r.file_type === 'pdf' ? '#EF4444' : '#2563EB'}; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
                           <i class="far ${r.file_type === 'pdf' ? 'fa-file-pdf' : 'fa-file-word'}"></i>
                         </div>
                         <div>
-                          <div class="resume-version-name">${r.name}</div>
-                          <div class="resume-version-meta">${r.file_name} &bull; ${new Date(r.created_at).toLocaleDateString()}</div>
+                          <div class="resume-version-name" style="font-weight: 700; color: var(--color-primary); font-size: 0.9rem;">${r.name}</div>
+                          <div class="resume-version-meta" style="font-size: 0.72rem; color: var(--color-text-secondary); margin-top: 2px; text-transform: uppercase;">
+                            ${r.file_name} &bull; ${new Date(r.created_at).toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
                       <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-outline btn-sm use-resume-btn" data-id="${r.id}" title="Select for analysis" style="padding: 6px 10px; font-size: 0.75rem; border-color: var(--color-secondary); color: var(--color-secondary);">
+                        <button class="btn btn-outline btn-sm use-resume-btn" data-id="${r.id}" title="Select for analysis" style="padding: 6px 10px; font-size: 0.75rem; border-color: var(--color-secondary); color: var(--color-secondary); font-weight:700; background:transparent;">
                           Select
                         </button>
-                        <button class="btn btn-outline btn-sm delete-resume-btn" data-id="${r.id}" title="Delete version" style="padding: 6px 10px; font-size: 0.75rem; border-color: var(--color-danger); color: var(--color-danger);">
+                        <button class="btn btn-outline btn-sm delete-resume-btn" data-id="${r.id}" title="Delete version" style="padding: 6px 10px; font-size: 0.75rem; border-color: var(--color-danger); color: var(--color-danger); background:transparent;">
                           <i class="far fa-trash-alt"></i>
                         </button>
                       </div>
                     </div>
                   `).join('')}
                 </div>
-              </div>
 
+                <!-- Pro Tip Widget -->
+                <div class="pro-tip-card" style="background-color: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.12); border-radius: var(--radius-lg); padding: 20px; display: flex; gap: 16px; margin-top: 24px;">
+                  <i class="fas fa-info-circle" style="color: #2563EB; font-size: 1.25rem; margin-top: 2px;"></i>
+                  <div>
+                    <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--color-primary); margin-bottom: 6px;">Pro Tip</h4>
+                    <p style="color: var(--color-text-secondary); font-size: 0.8rem; line-height: 1.5; margin: 0;">
+                      Different versions of your resume should be tailored to specific job sectors for the highest ATS score. Use the "AI Insights" tab to see which version performs best for specific roles.
+                    </p>
+                  </div>
+                </div>
+
+              </div>
             </div>
           </div>
         </div>
