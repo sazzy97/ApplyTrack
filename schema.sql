@@ -375,3 +375,62 @@ CREATE POLICY "Allow individual insert access to own follow ups"
 CREATE POLICY "Allow individual delete access to own follow ups"
   ON public.follow_ups FOR DELETE
   USING (auth.uid() = user_id);
+
+-- ==========================================================================
+-- MILESTONE 14: AI INTERVIEW COACH
+-- ==========================================================================
+
+-- Create practice_questions table to store generated questions
+CREATE TABLE IF NOT EXISTS public.practice_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  job_id UUID REFERENCES public.jobs ON DELETE CASCADE,
+  interview_type TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('General', 'Behavioral', 'Technical', 'Company-Specific', 'Portfolio')),
+  question TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Create practice_answers table to store structured user responses
+CREATE TABLE IF NOT EXISTS public.practice_answers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  question_id UUID REFERENCES public.practice_questions ON DELETE CASCADE NOT NULL,
+  situation TEXT,
+  task TEXT,
+  action TEXT,
+  result TEXT,
+  full_answer TEXT NOT NULL,
+  ai_feedback TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS) on both tables
+ALTER TABLE public.practice_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.practice_answers ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for practice_questions access
+CREATE POLICY "Allow individual read access to own practice questions"
+  ON public.practice_questions FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual insert access to own practice questions"
+  ON public.practice_questions FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual delete access to own practice questions"
+  ON public.practice_questions FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Create policies for practice_answers access
+CREATE POLICY "Allow individual read access to own practice answers"
+  ON public.practice_answers FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual insert access to own practice answers"
+  ON public.practice_answers FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual delete access to own practice answers"
+  ON public.practice_answers FOR DELETE
+  USING (auth.uid() = user_id);

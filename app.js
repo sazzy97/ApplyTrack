@@ -2511,6 +2511,153 @@ function getFollowUps() {
   return JSON.parse(drafts);
 }
 
+async function fetchPracticeQuestions() {
+  if (window.USE_MOCK_AUTH) {
+    return getPracticeQuestions();
+  } else {
+    const { data, error } = await supabaseClient
+      .from('practice_questions')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function savePracticeQuestion(jobId, interviewType, category, question) {
+  if (window.USE_MOCK_AUTH) {
+    let questions = getPracticeQuestions();
+    const newQ = {
+      id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      job_id: jobId || null,
+      interview_type: interviewType,
+      category,
+      question,
+      created_at: new Date().toISOString()
+    };
+    questions.push(newQ);
+    localStorage.setItem('applytrack_practice_questions', JSON.stringify(questions));
+    return newQ;
+  } else {
+    const { data, error } = await supabaseClient
+      .from('practice_questions')
+      .insert({
+        user_id: currentUser.id,
+        job_id: jobId || null,
+        interview_type: interviewType,
+        category,
+        question
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function fetchPracticeAnswers() {
+  if (window.USE_MOCK_AUTH) {
+    return getPracticeAnswers();
+  } else {
+    const { data, error } = await supabaseClient
+      .from('practice_answers')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function savePracticeAnswer(questionId, situation, task, action, result, fullAnswer, aiFeedback) {
+  if (window.USE_MOCK_AUTH) {
+    let answers = getPracticeAnswers();
+    answers = answers.filter(a => String(a.question_id) !== String(questionId));
+    
+    const newAns = {
+      id: 'ans_' + Date.now(),
+      question_id: questionId,
+      situation,
+      task,
+      action,
+      result,
+      full_answer: fullAnswer,
+      ai_feedback: aiFeedback || 'STAR alignment check: Excellent structure. Direct alignment with role expectations.',
+      created_at: new Date().toISOString()
+    };
+    answers.unshift(newAns);
+    localStorage.setItem('applytrack_practice_answers', JSON.stringify(answers));
+    return newAns;
+  } else {
+    await supabaseClient.from('practice_answers').delete().eq('question_id', questionId);
+    
+    const { data, error } = await supabaseClient
+      .from('practice_answers')
+      .insert({
+        user_id: currentUser.id,
+        question_id: questionId,
+        situation,
+        task,
+        action,
+        result,
+        full_answer: fullAnswer,
+        ai_feedback: aiFeedback || 'STAR alignment check: Excellent structure. Direct alignment with role expectations.'
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+}
+
+function getPracticeQuestions() {
+  let questions = localStorage.getItem('applytrack_practice_questions');
+  if (!questions) {
+    const defaultQs = [
+      {
+        id: 'q_default_1',
+        job_id: '1',
+        interview_type: 'Technical',
+        category: 'Technical',
+        question: 'Explain how you would optimize checkout forms to prevent user drop-off and improve layout responsiveness.',
+        created_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString()
+      },
+      {
+        id: 'q_default_2',
+        job_id: '1',
+        interview_type: 'Behavioral',
+        category: 'Behavioral',
+        question: 'Tell me about a time when you had to make design compromises due to strict frontend framework limitations.',
+        created_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString()
+      }
+    ];
+    localStorage.setItem('applytrack_practice_questions', JSON.stringify(defaultQs));
+    return defaultQs;
+  }
+  return JSON.parse(questions);
+}
+
+function getPracticeAnswers() {
+  let answers = localStorage.getItem('applytrack_practice_answers');
+  if (!answers) {
+    const defaultAns = [
+      {
+        id: 'ans_default_1',
+        question_id: 'q_default_1',
+        situation: 'At Stripe redesign phase, checkout forms showed a 25% mobile layout abandonment rate.',
+        task: 'I had to optimize layout margins, inputs sizing, and streamline payment method selectors.',
+        action: 'I converted the multi-column layout to a fluid single-column form on small viewports and integrated smart autocomplete fields.',
+        result: 'Mobile abandonment dropped by 18%, and layout rendering was WCAG aligned.',
+        full_answer: 'At my previous redesign project, our dashboard checkout form showed a 25% mobile layout abandonment rate. My task was to optimize viewport margins and simplify fields. I transitioned the form to a single-column layout, and incorporated smart autocomplete. This reduced abandonment by 18% and improved readability.',
+        ai_feedback: 'STAR alignment check: Excellent structure. Situation, Task, Action, and Result are clearly demarcated. The metrics in the result highlight measurable user value.',
+        created_at: new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString()
+      }
+    ];
+    localStorage.setItem('applytrack_practice_answers', JSON.stringify(defaultAns));
+    return defaultAns;
+  }
+  return JSON.parse(answers);
+}
+
 async function updateJobStatus(jobId, oldStatus, newStatus) {
   if (window.USE_MOCK_AUTH) {
     let jobs = getJobs();
@@ -4735,7 +4882,7 @@ function getAppViewRoot() {
 
 function renderAppShell(currentHash) {
   const root = document.getElementById('app-root');
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : currentHash.includes('interview-coach') ? 'interview-coach' : 'dashboard';
   
   root.innerHTML = `
     <div class="app-shell">
@@ -4765,6 +4912,9 @@ function renderAppShell(currentHash) {
           </a>
           <a href="#/interviews" class="sidebar-link ${activeTab === 'interviews' ? 'active' : ''}" id="sidebar-link-interviews">
             <i class="fas fa-calendar-alt"></i> <span>Interviews</span>
+          </a>
+          <a href="#/interview-coach" class="sidebar-link ${activeTab === 'interview-coach' ? 'active' : ''}" id="sidebar-link-interview-coach">
+            <i class="fas fa-user-graduate"></i> <span>Interview Coach</span>
           </a>
           <a href="#/resume-analyzer" class="sidebar-link ${activeTab === 'resume-analyzer' ? 'active' : ''}" id="sidebar-link-resume-analyzer">
             <i class="fas fa-file-invoice"></i> <span>Resume Analyzer</span>
@@ -4813,6 +4963,12 @@ function renderAppShell(currentHash) {
           <div class="mobile-drawer-body">
             <a href="#/insights" class="drawer-link" id="drawer-link-insights">
               <i class="fas fa-brain"></i> AI Insights
+            </a>
+            <a href="#/interviews" class="drawer-link" id="drawer-link-interviews">
+              <i class="fas fa-calendar-alt"></i> Interviews
+            </a>
+            <a href="#/interview-coach" class="drawer-link" id="drawer-link-interview-coach">
+              <i class="fas fa-user-graduate"></i> Interview Coach
             </a>
             <a href="#/resume-analyzer" class="drawer-link" id="drawer-link-resume-analyzer">
               <i class="fas fa-file-invoice"></i> Resume Analyzer
@@ -4907,6 +5063,10 @@ function renderAppShell(currentHash) {
     drawerOverlay?.classList.remove('open');
   });
 
+  document.getElementById('drawer-link-interviews')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
+
   document.getElementById('drawer-link-resume-analyzer')?.addEventListener('click', () => {
     drawerOverlay?.classList.remove('open');
   });
@@ -4914,12 +5074,12 @@ function renderAppShell(currentHash) {
   document.getElementById('drawer-link-cover-letter')?.addEventListener('click', () => {
     drawerOverlay?.classList.remove('open');
   });
-  
-  document.getElementById('drawer-link-cover-letter')?.addEventListener('click', () => {
+
+  document.getElementById('drawer-link-follow-up')?.addEventListener('click', () => {
     drawerOverlay?.classList.remove('open');
   });
 
-  document.getElementById('drawer-link-follow-up')?.addEventListener('click', () => {
+  document.getElementById('drawer-link-interview-coach')?.addEventListener('click', () => {
     drawerOverlay?.classList.remove('open');
   });
   
@@ -4928,7 +5088,7 @@ function renderAppShell(currentHash) {
 }
 
 function updateAppShellActiveLink(currentHash) {
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : currentHash.includes('interview-coach') ? 'interview-coach' : 'dashboard';
   
   document.querySelectorAll('.sidebar-link, .bottom-nav-item').forEach(link => {
     link.classList.remove('active');
@@ -4954,6 +5114,7 @@ const routes = {
   '#/resume-analyzer': { render: renderResumeAnalyzer, authRequired: true, onboardingRequired: true },
   '#/cover-letter': { render: renderCoverLetter, authRequired: true, onboardingRequired: true },
   '#/follow-up': { render: renderFollowUp, authRequired: true, onboardingRequired: true },
+  '#/interview-coach': { render: renderInterviewCoach, authRequired: true, onboardingRequired: true },
   '#/settings': { render: renderSettings, authRequired: true, onboardingRequired: true },
   '#/interviews': { render: renderInterviews, authRequired: true, onboardingRequired: true },
   '#/notifications': { render: renderNotifications, authRequired: true, onboardingRequired: true },
@@ -7016,6 +7177,725 @@ async function renderFollowUp() {
   await loadAndRender();
 }
 
+// 6A-5. AI INTERVIEW COACH PAGE
+async function renderInterviewCoach() {
+  const root = getAppViewRoot();
+  
+  root.innerHTML = `
+    <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary);"></i>
+      <p style="color:var(--color-text-secondary); font-weight:500;">Loading AI Interview Coach...</p>
+    </div>
+  `;
+
+  // Parse jobId query parameter from hash
+  const hashParts = window.location.hash.split('?');
+  const queryParams = new URLSearchParams(hashParts[1] || '');
+  const prefillJobId = queryParams.get('jobId');
+
+  let activeTab = 'star'; // 'star' or 'mock'
+  let selectedJobId = prefillJobId || '';
+  let activeQuestions = [];
+  let activeAnswers = [];
+  
+  // Mock Interview State
+  let mockActive = false;
+  let mockQuestionsList = [];
+  let mockCurrentIndex = 0;
+  let mockTimerInterval = null;
+  let mockTimerSeconds = 0;
+  let mockUserAnswers = []; // Array of { qId, answerText, timeSpent }
+  let mockCompleted = false;
+
+  function formatTimer(sec) {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = (sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  async function loadData() {
+    const [jobs, questions, answers] = await Promise.all([
+      fetchJobs(),
+      fetchPracticeQuestions(),
+      fetchPracticeAnswers()
+    ]);
+    return { jobs, questions, answers };
+  }
+
+  async function loadAndRender() {
+    try {
+      const { jobs, questions, answers } = await loadData();
+      activeQuestions = selectedJobId ? questions.filter(q => String(q.job_id) === String(selectedJobId)) : questions;
+      activeAnswers = answers;
+
+      const selectedJob = selectedJobId ? jobs.find(j => String(j.id) === String(selectedJobId)) : null;
+
+      root.innerHTML = `
+        <div class="analyzer-page-container">
+          <!-- Page Header -->
+          <div style="margin-bottom: 24px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+            <div>
+              <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary);">AI Interview Coach</h1>
+              <p style="color: var(--color-text-secondary); margin-top: 4px;">Master your interviews: Practice key questions and run simulated mock interviews with real-time feedback.</p>
+            </div>
+            
+            <div class="form-group" style="min-width: 240px; margin:0;">
+              <select id="coach-job-select" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.88rem; background-color: #FFFFFF; height: 38px; min-height: 38px !important;">
+                <option value="">[All General Questions]</option>
+                ${jobs.map(j => `<option value="${j.id}" ${String(j.id) === String(selectedJobId) ? 'selected' : ''}>${j.company} - ${j.role}</option>`).join('')}
+              </select>
+              <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.75rem;"></i>
+            </div>
+          </div>
+
+          <!-- Tabs Switcher -->
+          <div class="coach-tab-bar">
+            <button class="coach-tab-btn ${activeTab === 'star' ? 'active' : ''}" id="tab-btn-star">
+              <i class="fas fa-edit" style="margin-right:6px;"></i> STAR Answer Builder
+            </button>
+            <button class="coach-tab-btn ${activeTab === 'mock' ? 'active' : ''}" id="tab-btn-mock">
+              <i class="fas fa-user-graduate" style="margin-right:6px;"></i> Mock Interview Workspace
+            </button>
+          </div>
+
+          <!-- Workspace Mount Panel -->
+          <div id="coach-workspace-mount"></div>
+        </div>
+      `;
+
+      // Attach global selectors
+      document.getElementById('coach-job-select')?.addEventListener('change', (e) => {
+        selectedJobId = e.target.value;
+        loadAndRender();
+      });
+
+      document.getElementById('tab-btn-star')?.addEventListener('click', () => {
+        activeTab = 'star';
+        mockActive = false;
+        clearInterval(mockTimerInterval);
+        loadAndRender();
+      });
+
+      document.getElementById('tab-btn-mock')?.addEventListener('click', () => {
+        activeTab = 'mock';
+        mockCompleted = false;
+        mockActive = false;
+        clearInterval(mockTimerInterval);
+        loadAndRender();
+      });
+
+      // Render Active Tab Workspace
+      if (activeTab === 'star') {
+        renderStarTab(jobs, selectedJob);
+      } else {
+        renderMockTab();
+      }
+
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = `
+        <div style="padding: 40px; text-align: center;">
+          <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 8px;">Failed to load Interview Coach</h2>
+          <p style="color: var(--color-text-secondary); margin-bottom: 24px;">${err.message}</p>
+          <button onclick="window.location.reload();" class="btn btn-primary">Retry</button>
+        </div>
+      `;
+    }
+  }
+
+  // ==========================================
+  // TAB 1: STAR RESPONSE BUILDER
+  // ==========================================
+  let selectedQuestionId = null;
+
+  function renderStarTab(jobs, selectedJob) {
+    const mount = document.getElementById('coach-workspace-mount');
+    if (!mount) return;
+
+    // Filter questions matching current select question ID to load details
+    const currentQ = activeQuestions.find(q => String(q.id) === String(selectedQuestionId));
+    const currentAnswer = currentQ ? activeAnswers.find(a => String(a.question_id) === String(currentQ.id)) : null;
+
+    mount.innerHTML = `
+      <div class="analyzer-grid">
+        <!-- Left Pane: STAR Forms -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          
+          <!-- Setup Question Generator Card -->
+          <div class="resume-history-card">
+            <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px;">
+              <i class="fas fa-cog" style="color: #2563EB; margin-right: 6px;"></i> Question Settings
+            </h3>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom: 16px;">
+              <div class="form-group">
+                <label class="form-label" for="coach-prep-type">Interview Type</label>
+                <div style="position:relative;">
+                  <select id="coach-prep-type" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.9rem; background-color: #FFFFFF;">
+                    <option value="Behavioral">Behavioral</option>
+                    <option value="Technical">Technical</option>
+                    <option value="HR Screen">HR Screen</option>
+                    <option value="System Design">System Design</option>
+                    <option value="Portfolio Presentation">Portfolio Presentation</option>
+                  </select>
+                  <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.8rem;"></i>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="coach-prep-category">Question Category</label>
+                <div style="position:relative;">
+                  <select id="coach-prep-category" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.9rem; background-color: #FFFFFF;">
+                    <option value="General">General / Common</option>
+                    <option value="Behavioral">Behavioral</option>
+                    <option value="Technical">Technical</option>
+                    <option value="Company-Specific">Company-Specific</option>
+                    <option value="Portfolio">Portfolio Presentation</option>
+                  </select>
+                  <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.8rem;"></i>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="generate-coach-questions" style="width:100%; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:700;">
+              <i class="fas fa-magic"></i> Generate Practice Questions
+            </button>
+          </div>
+
+          <!-- STAR Form Builder Card -->
+          <div class="resume-history-card" id="star-builder-card" style="${currentQ ? 'display:block;' : 'display:none;'}">
+            <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 12px; display:flex; align-items:center; justify-content:space-between;">
+              <span><i class="fas fa-edit" style="color: #2563EB; margin-right: 6px;"></i> STAR Response Builder</span>
+              <span class="badge-status" style="background-color: var(--color-surface); border:1px solid var(--color-border); font-size: 0.7rem; font-weight: 700; color: var(--color-text-secondary);">
+                ${currentQ ? currentQ.category : ''} Question
+              </span>
+            </h3>
+            
+            <div style="background-color: #F8FAFC; border:1px solid var(--color-border); padding:12px 16px; border-radius:8px; margin-bottom:20px; font-size:0.92rem; font-weight:700; color:var(--color-primary);">
+              "${currentQ ? currentQ.question : ''}"
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div class="form-group">
+                <label class="form-label"><strong>S</strong>ituation &mdash; Describe the context/scenario</label>
+                <textarea id="star-s" class="form-input" rows="2" placeholder="e.g. During our mobile layout release, checkouts showed a 25% dropoff rate..." style="font-size:0.85rem; font-family:inherit; background-color: #FFFFFF;">${currentAnswer ? (currentAnswer.situation || '') : ''}</textarea>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label"><strong>T</strong>ask &mdash; Describe the challenge or goal</label>
+                <textarea id="star-t" class="form-input" rows="2" placeholder="e.g. My task was to simplify fields and verify responsive boundaries..." style="font-size:0.85rem; font-family:inherit; background-color: #FFFFFF;">${currentAnswer ? (currentAnswer.task || '') : ''}</textarea>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label"><strong>A</strong>ction &mdash; What steps did you take?</label>
+                <textarea id="star-a" class="form-input" rows="3" placeholder="e.g. I refactored the viewport CSS selectors, built fluid layouts, and auto-filled data..." style="font-size:0.85rem; font-family:inherit; background-color: #FFFFFF;">${currentAnswer ? (currentAnswer.action || '') : ''}</textarea>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label"><strong>R</strong>esult &mdash; What was the outcome?</label>
+                <textarea id="star-r" class="form-input" rows="2" placeholder="e.g. Checkout abandonment dropped by 18% and forms became WCAG compliant..." style="font-size:0.85rem; font-family:inherit; background-color: #FFFFFF;">${currentAnswer ? (currentAnswer.result || '') : ''}</textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Compiled Answer Response</label>
+                <textarea id="star-compiled" class="form-input" rows="5" placeholder="Your complete answer will combine dynamically here, or you can write manually..." style="font-size:0.88rem; font-family:inherit; background-color: #FFFFFF; font-weight:500;">${currentAnswer ? (currentAnswer.full_answer || '') : ''}</textarea>
+              </div>
+
+              ${currentAnswer?.ai_feedback ? `
+                <div style="background-color:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.15); border-radius:6px; padding:12px; font-size:0.82rem; color:#065F46; line-height:1.4;">
+                  <i class="fas fa-check-circle" style="color:#10B981; margin-right:4px;"></i> <strong>AI Prep Coach Feedback:</strong><br>${currentAnswer.ai_feedback}
+                </div>
+              ` : ''}
+
+              <button class="btn btn-primary" id="save-star-answer" style="width:100%; min-height:40px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px;">
+                <i class="far fa-save"></i> Save Practice Answer
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Pane: Question Bank List -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          
+          <div class="resume-history-card">
+            <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+              <span><i class="fas fa-briefcase" style="color: #2563EB; margin-right: 6px;"></i> Role Questions Bank</span>
+              <span class="badge-status" style="background-color:#2563EB; color:#FFFFFF; font-size: 0.68rem; font-weight: 800; padding: 4px 10px; border-radius: 9999px;">
+                ${activeQuestions.length} Questions
+              </span>
+            </h3>
+
+            <div class="practice-questions-bank-list">
+              ${activeQuestions.length === 0 ? `
+                <p style="color: var(--color-text-secondary); font-size: 0.88rem; font-style: italic; text-align:center; padding:24px 0;">No practice questions found. Generate a set on the left to start!</p>
+              ` : activeQuestions.map(q => {
+                const answer = activeAnswers.find(a => String(a.question_id) === String(q.id));
+                const isSelected = String(q.id) === String(selectedQuestionId);
+                return `
+                  <div class="cover-letter-item select-question-row" data-id="${q.id}" style="cursor:pointer; border-color:${isSelected ? 'var(--color-secondary)' : 'var(--color-border)'}; background-color:${isSelected ? 'rgba(37,99,235,0.02)' : 'var(--color-surface)'};">
+                    <div style="min-width:0; flex-grow:1; margin-right:12px;">
+                      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                        <span style="font-size:0.65rem; background-color:#F1F5F9; color:var(--color-text-secondary); font-weight:800; padding:2px 6px; border-radius:4px; text-transform:uppercase;">
+                          ${q.category}
+                        </span>
+                        ${answer ? `
+                          <span style="font-size:0.65rem; background-color:rgba(16,185,129,0.1); color:#10B981; font-weight:800; padding:2px 6px; border-radius:4px;">
+                            <i class="fas fa-check"></i> Answered
+                          </span>
+                        ` : `
+                          <span style="font-size:0.65rem; background-color:#F1F5F9; color:var(--color-text-secondary); font-weight:800; padding:2px 6px; border-radius:4px;">
+                            Unanswered
+                          </span>
+                        `}
+                      </div>
+                      <div style="font-size:0.85rem; font-weight:600; color:var(--color-text); line-height:1.4;">
+                        "${q.question}"
+                      </div>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:var(--color-text-secondary); font-size:0.8rem;"></i>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    // 1. Generate Questions click
+    document.getElementById('generate-coach-questions')?.addEventListener('click', async () => {
+      const type = document.getElementById('coach-prep-type').value;
+      const category = document.getElementById('coach-prep-category').value;
+      const btn = document.getElementById('generate-coach-questions');
+      
+      setButtonLoading(btn, true, "Generating Practice Questions");
+
+      setTimeout(async () => {
+        let questionText = '';
+        if (category === 'Technical') {
+          questionText = `Explain the design trade-offs you would make when implementing responsive tables and flexbox card grid layouts for different viewport sizes.`;
+        } else if (category === 'Behavioral') {
+          questionText = `Tell me about a time when you discovered a major layout distortion on small mobile small breakpoints and how you collaborated with stakeholders to fix it.`;
+        } else if (category === 'Company-Specific') {
+          questionText = `How would you align ApplyTrack's core application dashboard interface to meet Stripe's developer dashboard aesthetic guidelines?`;
+        } else if (category === 'Portfolio') {
+          questionText = `Walk us through a dashboard interface you designed recently, highlighting layout decisions and user interaction states.`;
+        } else {
+          questionText = `What is your approach to ensuring layout responsiveness across mobile small (320px) to laptop viewports without bloating media queries?`;
+        }
+
+        try {
+          await savePracticeQuestion(selectedJobId, type, category, questionText);
+          showToast("Practice question added successfully!", "success");
+          loadAndRender();
+        } catch (err) {
+          showToast(err.message, 'error');
+          setButtonLoading(btn, false, "Generate Practice Questions");
+        }
+      }, 1000);
+    });
+
+    // 2. Select Question Row from bank
+    document.querySelectorAll('.select-question-row').forEach(row => {
+      row.addEventListener('click', () => {
+        selectedQuestionId = row.getAttribute('data-id');
+        loadAndRender();
+      });
+    });
+
+    // 3. Compile STAR response on typing S, T, A, R fields
+    const sEl = document.getElementById('star-s');
+    const tEl = document.getElementById('star-t');
+    const aEl = document.getElementById('star-a');
+    const rEl = document.getElementById('star-r');
+    const compiledEl = document.getElementById('star-compiled');
+
+    const updateCompiledAnswer = () => {
+      if (!currentAnswer && compiledEl) {
+        const s = sEl?.value.trim() || '';
+        const t = tEl?.value.trim() || '';
+        const a = aEl?.value.trim() || '';
+        const r = rEl?.value.trim() || '';
+        
+        let pieces = [];
+        if (s) pieces.push(`[Situation] ${s}`);
+        if (t) pieces.push(`[Task] ${t}`);
+        if (a) pieces.push(`[Action] ${a}`);
+        if (r) pieces.push(`[Result] ${r}`);
+        
+        compiledEl.value = pieces.join(' ');
+      }
+    };
+
+    [sEl, tEl, aEl, rEl].forEach(el => {
+      el?.addEventListener('input', updateCompiledAnswer);
+    });
+
+    // 4. Save structured answer
+    document.getElementById('save-star-answer')?.addEventListener('click', async () => {
+      const s = sEl?.value.trim() || '';
+      const t = tEl?.value.trim() || '';
+      const a = aEl?.value.trim() || '';
+      const r = rEl?.value.trim() || '';
+      const fullAnswer = compiledEl?.value.trim() || '';
+
+      if (!fullAnswer) {
+        showToast("Answer response cannot be empty", "error");
+        return;
+      }
+
+      try {
+        const btn = document.getElementById('save-star-answer');
+        setButtonLoading(btn, true, "Saving Practice Answer");
+
+        await savePracticeAnswer(
+          selectedQuestionId,
+          s,
+          t,
+          a,
+          r,
+          fullAnswer,
+          'STAR structure check: Good flow! Description includes situation metrics and action details that align directly with responsibilities.'
+        );
+
+        showToast("STAR response saved successfully!", "success");
+        loadAndRender();
+      } catch (err) {
+        showToast(err.message, 'error');
+        setButtonLoading(document.getElementById('save-star-answer'), false, "Saving Practice Answer");
+      }
+    });
+  }
+
+  // ==========================================
+  // TAB 2: MOCK INTERVIEW WORKSPACE
+  // ==========================================
+  let activeTimerSeconds = 0;
+  let voiceRecording = false;
+
+  function renderMockTab() {
+    const mount = document.getElementById('coach-workspace-mount');
+    if (!mount) return;
+
+    if (mockCompleted) {
+      renderMockReport(mount);
+      return;
+    }
+
+    if (mockActive) {
+      renderMockActiveWorkspace(mount);
+      return;
+    }
+
+    // Step 1: Mock setup form
+    mount.innerHTML = `
+      <div style="max-width:600px; margin:0 auto;">
+        <div class="resume-history-card" style="padding:32px;">
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--color-primary); margin-bottom: 8px; text-align:center;">
+            <i class="fas fa-user-graduate" style="color: #2563EB; margin-right: 6px;"></i> Mock Interview Setup
+          </h3>
+          <p style="color:var(--color-text-secondary); text-align:center; font-size:0.88rem; margin-bottom:28px;">
+            Test your knowledge under pressure. Answer questions sequentially with active timers.
+          </p>
+
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label class="form-label">Questions Count</label>
+            <div style="position:relative;">
+              <select id="mock-questions-count" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.9rem; background-color: #FFFFFF;">
+                <option value="3">3 Questions (Quick Practice)</option>
+                <option value="5">5 Questions (Standard Practice)</option>
+                <option value="10">10 Questions (Complete Run)</option>
+              </select>
+              <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.8rem;"></i>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 24px;">
+            <label class="form-label">Question Categories</label>
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.88rem; cursor:pointer;">
+                <input type="checkbox" class="mock-category-check" value="General" checked> General / Common Questions
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.88rem; cursor:pointer;">
+                <input type="checkbox" class="mock-category-check" value="Technical" checked> Technical Questions
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.88rem; cursor:pointer;">
+                <input type="checkbox" class="mock-category-check" value="Behavioral" checked> Behavioral (STAR) Questions
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.88rem; cursor:pointer;">
+                <input type="checkbox" class="mock-category-check" value="Company-Specific" checked> Company-Specific Questions
+              </label>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="start-mock-btn" style="width:100%; min-height:46px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.95rem;">
+            <i class="fas fa-play"></i> Start Mock Interview Session
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('start-mock-btn')?.addEventListener('click', () => {
+      const count = parseInt(document.getElementById('mock-questions-count').value);
+      const checkedBoxes = document.querySelectorAll('.mock-category-check:checked');
+      const selectedCategories = Array.from(checkedBoxes).map(cb => cb.value);
+
+      if (selectedCategories.length === 0) {
+        showToast("Please select at least one question category", "error");
+        return;
+      }
+
+      // Generate or retrieve mock list
+      let pool = activeQuestions.filter(q => selectedCategories.includes(q.category));
+      if (pool.length === 0) {
+        // Fallback placeholder questions if bank is empty
+        pool = [
+          { id: 'mq_1', category: 'General', question: 'Tell me about yourself and your design/dev background.' },
+          { id: 'mq_2', category: 'Technical', question: 'How do you handle responsiveness distortions on viewport breakpoints?' },
+          { id: 'mq_3', category: 'Behavioral', question: 'Describe a difficult project challenge and how you navigated it.' },
+          { id: 'mq_4', category: 'Company-Specific', question: 'Why are you interested in joining our product team?' }
+        ];
+      }
+
+      // Shuffle pool and slice count
+      mockQuestionsList = pool.sort(() => 0.5 - Math.random()).slice(0, count);
+      mockCurrentIndex = 0;
+      mockUserAnswers = [];
+      mockActive = true;
+      mockCompleted = false;
+
+      renderMockActiveWorkspace(mount);
+    });
+  }
+
+  function renderMockActiveWorkspace(mount) {
+    const q = mockQuestionsList[mockCurrentIndex];
+    if (!q) return;
+
+    // Reset and start timer
+    mockTimerSeconds = 0;
+    clearInterval(mockTimerInterval);
+    
+    mockTimerInterval = setInterval(() => {
+      mockTimerSeconds++;
+      const timerDigits = document.getElementById('mock-timer-digits');
+      if (timerDigits) {
+        timerDigits.innerText = formatTimer(mockTimerSeconds);
+      }
+    }, 1000);
+
+    mount.innerHTML = `
+      <div style="max-width:720px; margin:0 auto;">
+        <div class="resume-history-card" style="padding:28px;">
+          <!-- Active header -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--color-border); padding-bottom:12px;">
+            <span style="font-size:0.85rem; font-weight:800; color:var(--color-secondary);">
+              QUESTION ${mockCurrentIndex + 1} OF ${mockQuestionsList.length} &bull; <span style="text-transform:uppercase;">${q.category}</span>
+            </span>
+            <div class="mock-timer-display">
+              <i class="far fa-clock"></i> <span id="mock-timer-digits">00:00</span>
+            </div>
+          </div>
+
+          <!-- Question Display -->
+          <h2 style="font-size:1.25rem; font-weight:800; color:var(--color-primary); line-height:1.5; margin-bottom:24px; text-align:center; padding:12px 0;">
+            "${q.question}"
+          </h2>
+
+          <!-- Waveform Simulator for Voice (Mock) -->
+          <div class="mock-waveform-simulator" id="voice-wave-container" style="display:none;">
+            <div class="mock-waveform-bar animate"></div>
+            <div class="mock-waveform-bar animate" style="animation-delay:0.1s;"></div>
+            <div class="mock-waveform-bar animate" style="animation-delay:0.25s;"></div>
+            <div class="mock-waveform-bar animate" style="animation-delay:0.4s;"></div>
+            <div class="mock-waveform-bar animate" style="animation-delay:0.2s;"></div>
+            <div class="mock-waveform-bar animate" style="animation-delay:0.35s;"></div>
+            <div class="mock-waveform-bar animate" style="animation-delay:0.15s;"></div>
+            <span style="font-size:0.82rem; color:var(--color-danger); font-weight:700; margin-left:12px;"><i class="fas fa-circle animate-flicker"></i> Recording Audio...</span>
+          </div>
+
+          <!-- Text Answer Box -->
+          <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label" for="mock-text-response">Write / Dictate your answer response</label>
+            <textarea id="mock-text-response" class="form-input" rows="8" placeholder="Type your practice response here, or click the mic button below to simulate voice dictation..." style="font-size:0.9rem; font-family:inherit; background-color:#FFFFFF; line-height:1.6;"></textarea>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:24px;">
+            <button class="btn btn-outline" id="mock-record-btn" style="border-color:var(--color-danger); color:var(--color-danger); background:transparent; font-weight:700; min-height:40px; display:flex; align-items:center; gap:8px;">
+              <i class="fas fa-microphone"></i> <span id="record-btn-text">Mock Voice dictation</span>
+            </button>
+            
+            <div style="display:flex; gap:12px;">
+              <button class="btn btn-outline" id="mock-skip-btn" style="min-height:40px; border-color:var(--color-border); color:var(--color-text); background:transparent;">Skip</button>
+              <button class="btn btn-primary" id="mock-next-btn" style="min-height:40px; font-weight:700;">Submit Answer & Next</button>
+            </div>
+          </div>
+
+          <!-- Abort Option -->
+          <div style="text-align:center; border-top:1px solid var(--color-border); padding-top:16px;">
+            <button id="mock-abort-btn" style="background:transparent; border:none; color:var(--color-text-secondary); cursor:pointer; font-size:0.8rem; font-weight:600;"><i class="fas fa-times-circle"></i> Cancel Interview Session</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // 1. Microphone mock click toggle
+    const recordBtn = document.getElementById('mock-record-btn');
+    const waveEl = document.getElementById('voice-wave-container');
+    const txtArea = document.getElementById('mock-text-response');
+
+    recordBtn?.addEventListener('click', () => {
+      voiceRecording = !voiceRecording;
+      if (voiceRecording) {
+        waveEl.style.display = 'flex';
+        recordBtn.style.backgroundColor = '#FEF2F2';
+        document.getElementById('record-btn-text').innerText = "Stop Dictation";
+        // Simulate typing
+        setTimeout(() => {
+          if (voiceRecording && txtArea) {
+            txtArea.value += " In my previous experience, I solved this exact challenge by building a fluid container component that adapts margins dynamically across smaller screens. This eliminated design overlaps...";
+          }
+        }, 2000);
+      } else {
+        waveEl.style.display = 'none';
+        recordBtn.style.backgroundColor = 'transparent';
+        document.getElementById('record-btn-text').innerText = "Mock Voice dictation";
+      }
+    });
+
+    // 2. Submit response click
+    document.getElementById('mock-next-btn')?.addEventListener('click', () => {
+      const ansText = txtArea.value.trim();
+      mockUserAnswers.push({
+        qId: q.id,
+        question: q.question,
+        category: q.category,
+        answer: ansText || '[Skipped/No response provided]',
+        timeSpent: mockTimerSeconds
+      });
+
+      advanceMock();
+    });
+
+    // 3. Skip click
+    document.getElementById('mock-skip-btn')?.addEventListener('click', () => {
+      mockUserAnswers.push({
+        qId: q.id,
+        question: q.question,
+        category: q.category,
+        answer: '[Skipped]',
+        timeSpent: mockTimerSeconds
+      });
+
+      advanceMock();
+    });
+
+    // 4. Abort click
+    document.getElementById('mock-abort-btn')?.addEventListener('click', () => {
+      if (confirm("Are you sure you want to abort the current mock interview? Progress will be lost.")) {
+        mockActive = false;
+        clearInterval(mockTimerInterval);
+        loadAndRender();
+      }
+    });
+  }
+
+  function advanceMock() {
+    mockCurrentIndex++;
+    if (mockCurrentIndex >= mockQuestionsList.length) {
+      clearInterval(mockTimerInterval);
+      mockActive = false;
+      mockCompleted = true;
+    }
+    loadAndRender();
+  }
+
+  // ==========================================
+  // TAB 3: MOCK REPORT SUMMARY
+  // ==========================================
+  function renderMockReport(mount) {
+    const answeredCount = mockUserAnswers.filter(ans => ans.answer !== '[Skipped]' && ans.answer !== '[Skipped]/No response provided').length;
+    const scorePct = Math.round((answeredCount / mockUserAnswers.length) * 100) || 0;
+
+    mount.innerHTML = `
+      <div style="max-width:720px; margin:0 auto;">
+        <div class="resume-history-card" style="padding:28px; margin-bottom:24px;">
+          <h2 style="font-size:1.4rem; font-weight:800; color:var(--color-primary); text-align:center; margin-bottom:8px;">
+            <i class="fas fa-award" style="color: #10B981; margin-right: 6px;"></i> Mock Interview Report
+          </h2>
+          <p style="color:var(--color-text-secondary); text-align:center; font-size:0.88rem; margin-bottom:28px;">
+            Review your structured answer logs and AI prep coach suggestions below.
+          </p>
+
+          <!-- Performance Score Cards -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:28px;">
+            <div style="background-color:#F8FAFC; border:1px solid var(--color-border); border-radius:8px; padding:16px; text-align:center;">
+              <div style="font-size:0.75rem; font-weight:800; color:var(--color-text-secondary); text-transform:uppercase;">Completeness Rating</div>
+              <div style="font-size:1.75rem; font-weight:800; color:var(--color-secondary); margin-top:4px;">${scorePct}%</div>
+              <div style="font-size:0.72rem; color:var(--color-text-secondary); margin-top:2px;">${answeredCount} of ${mockUserAnswers.length} Answered</div>
+            </div>
+            
+            <div style="background-color:#F8FAFC; border:1px solid var(--color-border); border-radius:8px; padding:16px; text-align:center;">
+              <div style="font-size:0.75rem; font-weight:800; color:var(--color-text-secondary); text-transform:uppercase;">STAR Alignment</div>
+              <div style="font-size:1.75rem; font-weight:800; color:#10B981; margin-top:4px;">Excellent</div>
+              <div style="font-size:0.72rem; color:var(--color-text-secondary); margin-top:2px;">Strong Situation/Result metrics</div>
+            </div>
+          </div>
+
+          <!-- Saved Draft Responses List -->
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            <h4 style="font-size:0.95rem; font-weight:800; color:var(--color-primary); margin:0;">Question Responses & Feedback</h4>
+            
+            ${mockUserAnswers.map((ans, index) => {
+              const skipped = ans.answer.includes('[Skipped]');
+              return `
+                <div style="border:1px solid var(--color-border); border-radius:8px; padding:16px; background-color:#FFFFFF;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:0.72rem; font-weight:800; color:var(--color-secondary); text-transform:uppercase;">Q${index + 1}: ${ans.category}</span>
+                    <span style="font-size:0.72rem; color:var(--color-text-secondary);"><i class="far fa-clock"></i> Answered in ${formatTimer(ans.timeSpent)}</span>
+                  </div>
+                  
+                  <div style="font-size:0.9rem; font-weight:700; color:var(--color-primary); margin-bottom:8px;">
+                    "${ans.question}"
+                  </div>
+                  
+                  <div style="font-size:0.85rem; background-color:#F8FAFC; border-radius:6px; padding:10px; color:var(--color-text); margin-bottom:12px; font-style:${skipped ? 'italic' : 'normal'}; border-left: 3px solid ${skipped ? '#EF4444' : 'var(--color-secondary)'};">
+                    <strong>Your Response:</strong><br>${ans.answer}
+                  </div>
+
+                  ${!skipped ? `
+                    <div style="background-color:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.1); border-radius:6px; padding:10px; font-size:0.8rem; color:#065F46; line-height:1.4; margin-bottom:8px;">
+                      <strong>AI Coach Evaluation:</strong><br>
+                      <strong>Strengths:</strong> Good context and action details. Direct alignment with product goals.<br>
+                      <strong>Suggested Improvements:</strong> Try adding more specific quantitative outcomes in the result section.<br>
+                      <strong>Model Answer Preview:</strong> "I solved this layout overlap by isolating mobile viewport styles and implementing fluid grid components..."
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div style="margin-top:28px; text-align:center;">
+            <button class="btn btn-primary" id="restart-mock-btn" style="min-height:44px; padding:0 24px; font-weight:700;">
+              <i class="fas fa-redo"></i> Start New Mock Session
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('restart-mock-btn')?.addEventListener('click', () => {
+      mockCompleted = false;
+      mockActive = false;
+      loadAndRender();
+    });
+  }
+
+  await loadAndRender();
+}
+
 // 6B. INTERVIEWS PAGE
 async function renderInterviews() {
   const root = getAppViewRoot();
@@ -7968,11 +8848,13 @@ async function renderApplicationDetail(jobId) {
 
   async function loadAndRender() {
     try {
-      const [{ job, notes, attachments, activities }, resumes, coverLetters, followUps] = await Promise.all([
+      const [{ job, notes, attachments, activities }, resumes, coverLetters, followUps, practiceQuestions, practiceAnswers] = await Promise.all([
         fetchJobDetails(jobId),
         fetchResumes(),
         fetchCoverLetters(),
-        fetchFollowUps()
+        fetchFollowUps(),
+        fetchPracticeQuestions(),
+        fetchPracticeAnswers()
       ]);
 
       const initial = job.company ? job.company.charAt(0).toUpperCase() : 'A';
@@ -8435,6 +9317,39 @@ async function renderApplicationDetail(jobId) {
                     }
                     return `<p style="color:var(--color-text-secondary); font-size:0.85rem; font-style:italic; margin-top:8px;">No resume assigned yet. Select a version above to associate it with this application.</p>`;
                   })()}
+              </div>
+
+              <!-- AI Interview Prep Card -->
+              <div class="detail-card">
+                <h3 class="detail-card-title">
+                  <span><i class="fas fa-user-graduate" style="margin-right: 8px;"></i> AI Interview Prep</span>
+                </h3>
+                
+                <div class="edit-form" style="display: block;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <span style="font-size:0.8rem; font-weight:700; color:var(--color-text);">Prep Status</span>
+                    <a href="#/interview-coach?jobId=${job.id}" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 0.72rem; display: flex; align-items: center; gap: 4px;">
+                      <i class="fas fa-magic"></i> Practice Hub
+                    </a>
+                  </div>
+                  
+                  <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; padding:8px 12px; border:1px solid var(--color-border); border-radius:6px; box-shadow: var(--shadow-sm);">
+                      <span style="font-size:0.8rem; color:var(--color-text-secondary);">Practice Questions</span>
+                      <span style="font-size:0.8rem; font-weight:700; color:var(--color-primary);">${practiceQuestions.filter(q => String(q.job_id) === String(job.id)).length} generated</span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; padding:8px 12px; border:1px solid var(--color-border); border-radius:6px; box-shadow: var(--shadow-sm);">
+                      <span style="font-size:0.8rem; color:var(--color-text-secondary);">STAR Answers</span>
+                      <span style="font-size:0.8rem; font-weight:700; color:#10B981;">
+                        ${(() => {
+                          const qIds = practiceQuestions.filter(q => String(q.job_id) === String(job.id)).map(q => String(q.id));
+                          const ansCount = practiceAnswers.filter(a => qIds.includes(String(a.question_id))).length;
+                          return `${ansCount} completed`;
+                        })()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
