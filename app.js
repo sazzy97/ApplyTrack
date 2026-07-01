@@ -8055,22 +8055,37 @@ async function renderJobAdvisor() {
           </div>
 
           <!-- Advisor KPI Metrics Row -->
-          <div class="metrics-grid" style="margin-bottom: 28px;">
-            <div class="metric-card">
-              <div class="metric-value">${totalApps}</div>
-              <div class="metric-label">Total Applications</div>
+          <div class="dashboard-stats" style="margin-bottom: 28px;">
+            <div class="stat-card" style="border-bottom: 3px solid var(--color-primary); text-align: left;">
+              <div class="stat-icon total" style="background-color: var(--color-primary-light); color: var(--color-primary);"><i class="fas fa-briefcase"></i></div>
+              <div class="stat-info">
+                <span class="stat-num" style="display:block; font-size:1.5rem; font-weight:800; color:var(--color-primary);">${totalApps}</span>
+                <span class="stat-label" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600;">Total Applications</span>
+              </div>
             </div>
-            <div class="metric-card">
-              <div class="metric-value" style="color: var(--color-secondary);">${responseRate}%</div>
-              <div class="metric-label">Response Rate</div>
+            
+            <div class="stat-card" style="border-bottom: 3px solid var(--color-secondary); text-align: left;">
+              <div class="stat-icon info" style="background-color: var(--color-secondary-light); color: var(--color-secondary);"><i class="fas fa-reply"></i></div>
+              <div class="stat-info">
+                <span class="stat-num" style="display:block; font-size:1.5rem; font-weight:800; color:var(--color-secondary);">${responseRate}%</span>
+                <span class="stat-label" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600;">Response Rate</span>
+              </div>
             </div>
-            <div class="metric-card">
-              <div class="metric-value" style="color: #10B981;">${interviewRate}%</div>
-              <div class="metric-label">Interview Conversion</div>
+
+            <div class="stat-card" style="border-bottom: 3px solid #10B981; text-align: left;">
+              <div class="stat-icon assessment" style="background-color: rgba(16, 185, 129, 0.08); color: #10B981;"><i class="fas fa-video"></i></div>
+              <div class="stat-info">
+                <span class="stat-num" style="display:block; font-size:1.5rem; font-weight:800; color:#10B981;">${interviewRate}%</span>
+                <span class="stat-label" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600;">Interview Conversion</span>
+              </div>
             </div>
-            <div class="metric-card">
-              <div class="metric-value" style="color: #F59E0B;">6.4 Days</div>
-              <div class="metric-label">Avg. Response Time</div>
+
+            <div class="stat-card" style="border-bottom: 3px solid #F59E0B; text-align: left;">
+              <div class="stat-icon alerts" style="background-color: rgba(245, 158, 11, 0.08); color: #F59E0B;"><i class="far fa-clock"></i></div>
+              <div class="stat-info">
+                <span class="stat-num" style="display:block; font-size:1.5rem; font-weight:800; color:#F59E0B;">6.4 Days</span>
+                <span class="stat-label" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600;">Avg. Response Time</span>
+              </div>
             </div>
           </div>
 
