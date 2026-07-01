@@ -4373,7 +4373,7 @@ function getAppViewRoot() {
 
 function renderAppShell(currentHash) {
   const root = document.getElementById('app-root');
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : 'dashboard';
   
   root.innerHTML = `
     <div class="app-shell">
@@ -4397,6 +4397,9 @@ function renderAppShell(currentHash) {
         <nav class="sidebar-nav">
           <a href="#/dashboard" class="sidebar-link ${activeTab === 'dashboard' ? 'active' : ''}" id="sidebar-link-dashboard">
             <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
+          </a>
+          <a href="#/insights" class="sidebar-link ${activeTab === 'insights' ? 'active' : ''}" id="sidebar-link-insights">
+            <i class="fas fa-brain"></i> <span>AI Insights</span>
           </a>
           <a href="#/interviews" class="sidebar-link ${activeTab === 'interviews' ? 'active' : ''}" id="sidebar-link-interviews">
             <i class="fas fa-calendar-alt"></i> <span>Interviews</span>
@@ -4437,6 +4440,9 @@ function renderAppShell(currentHash) {
             <button class="close-drawer-btn" id="close-drawer-btn"><i class="fas fa-times"></i></button>
           </div>
           <div class="mobile-drawer-body">
+            <a href="#/insights" class="drawer-link" id="drawer-link-insights">
+              <i class="fas fa-brain"></i> AI Insights
+            </a>
             <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
               <i class="fas fa-map-signs"></i> Setup Guide
             </a>
@@ -4516,13 +4522,17 @@ function renderAppShell(currentHash) {
   document.getElementById('drawer-link-onboarding')?.addEventListener('click', () => {
     drawerOverlay?.classList.remove('open');
   });
+
+  document.getElementById('drawer-link-insights')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
   
   // Initial count update
   updateMenuNotificationBadges();
 }
 
 function updateAppShellActiveLink(currentHash) {
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : 'dashboard';
   
   document.querySelectorAll('.sidebar-link, .bottom-nav-item').forEach(link => {
     link.classList.remove('active');
@@ -4544,6 +4554,7 @@ const routes = {
   '#/forgot-password': { render: renderForgotPassword, authRequired: false, guestOnly: true },
   '#/onboarding': { render: renderOnboarding, authRequired: true },
   '#/dashboard': { render: renderDashboard, authRequired: true, onboardingRequired: true },
+  '#/insights': { render: renderInsights, authRequired: true, onboardingRequired: true },
   '#/settings': { render: renderSettings, authRequired: true, onboardingRequired: true },
   '#/interviews': { render: renderInterviews, authRequired: true, onboardingRequired: true },
   '#/notifications': { render: renderNotifications, authRequired: true, onboardingRequired: true },
@@ -4677,7 +4688,507 @@ function setupPasswordToggles() {
   });
 }
 
+// 6A. AI INSIGHTS & ANALYTICS PAGE
+function computeAnalyticsMetrics(jobs, interviews) {
+  const totalApps = jobs.length;
+  
+  // 1. Success Rate: (Offers + Interviewing + Assessment) / Total
+  const successCount = jobs.filter(j => ['assessment', 'interviewing', 'offer'].includes(j.status.toLowerCase())).length;
+  const successRate = totalApps > 0 ? Math.round((successCount / totalApps) * 100) : 0;
+  
+  // 2. Interview Conversion Rate: jobs converting to interviews
+  const interviewCount = jobs.filter(j => ['interviewing', 'offer'].includes(j.status.toLowerCase())).length;
+  const interviewConversion = totalApps > 0 ? Math.round((interviewCount / totalApps) * 100) : 0;
+  
+  // 3. Offer Conversion Rate: offers / interviews
+  const offerCount = jobs.filter(j => j.status.toLowerCase() === 'offer').length;
+  const offerConversion = interviewCount > 0 ? Math.round((offerCount / interviewCount) * 100) : 0;
+  
+  // 4. Average Response Time calculation
+  let totalDays = 0;
+  let matches = 0;
+  jobs.forEach(job => {
+    const jobInts = interviews.filter(i => 
+      i.company.toLowerCase() === job.company.toLowerCase()
+    );
+    if (jobInts.length > 0 && job.date) {
+      const jobDate = new Date(job.date + 'T12:00:00');
+      let earliestIntDate = null;
+      jobInts.forEach(i => {
+        if (i.date) {
+          const d = new Date(i.date + 'T12:00:00');
+          if (!earliestIntDate || d < earliestIntDate) {
+            earliestIntDate = d;
+          }
+        }
+      });
+      if (earliestIntDate) {
+        const diffTime = earliestIntDate - jobDate;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0) {
+          totalDays += diffDays;
+          matches++;
+        }
+      }
+    }
+  });
+  const avgResponseTime = matches > 0 ? Math.round(totalDays / matches) : 14;
+  
+  // 5. Applications Sent This Week
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const sentThisWeek = jobs.filter(j => j.date && new Date(j.date + 'T12:00:00') >= oneWeekAgo).length;
 
+  // 6. Best Performing Platforms/Job Boards
+  const sourceStats = {};
+  jobs.forEach(j => {
+    const src = j.source || 'Other';
+    if (!sourceStats[src]) sourceStats[src] = { total: 0, converted: 0 };
+    sourceStats[src].total++;
+    if (['interviewing', 'offer'].includes(j.status.toLowerCase())) {
+      sourceStats[src].converted++;
+    }
+  });
+  let bestPlatform = 'LinkedIn';
+  let highestPlatformRate = 0;
+  Object.keys(sourceStats).forEach(src => {
+    const rate = sourceStats[src].converted / sourceStats[src].total;
+    if (rate > highestPlatformRate) {
+      highestPlatformRate = rate;
+      bestPlatform = src;
+    }
+  });
+
+  // 7. Best Performing Job Titles
+  const roleStats = {};
+  jobs.forEach(j => {
+    const role = j.role || 'Other';
+    let roleGroup = role;
+    if (role.toLowerCase().includes('designer')) roleGroup = 'Product Designer';
+    else if (role.toLowerCase().includes('engineer') || role.toLowerCase().includes('developer')) roleGroup = 'Software Engineer';
+    else if (role.toLowerCase().includes('manager')) roleGroup = 'Product Manager';
+
+    if (!roleStats[roleGroup]) roleStats[roleGroup] = { total: 0, converted: 0 };
+    roleStats[roleGroup].total++;
+    if (['interviewing', 'offer'].includes(j.status.toLowerCase())) {
+      roleStats[roleGroup].converted++;
+    }
+  });
+  let bestTitle = 'Software Engineer';
+  let highestTitleRate = 0;
+  Object.keys(roleStats).forEach(role => {
+    const rate = roleStats[role].converted / roleStats[role].total;
+    if (rate > highestTitleRate) {
+      highestTitleRate = rate;
+      bestTitle = role;
+    }
+  });
+
+  // 8. Most Active Companies
+  const companyCounts = {};
+  jobs.forEach(j => {
+    companyCounts[j.company] = (companyCounts[j.company] || 0) + 1;
+  });
+  let mostActiveCompany = 'Google';
+  let maxCompanyCount = 0;
+  Object.keys(companyCounts).forEach(c => {
+    if (companyCounts[c] > maxCompanyCount) {
+      maxCompanyCount = companyCounts[c];
+      mostActiveCompany = c;
+    }
+  });
+
+  return {
+    successRate,
+    interviewConversion,
+    offerConversion,
+    avgResponseTime,
+    sentThisWeek,
+    bestPlatform,
+    bestTitle,
+    mostActiveCompany
+  };
+}
+
+function generateAIRecommendations(jobs, interviews, metrics) {
+  const recommendations = [];
+  
+  // Recommendation 1: Referral analysis
+  const referralJobs = jobs.filter(j => j.source && j.source.toLowerCase() === 'referral');
+  const referralInterviews = referralJobs.filter(j => ['interviewing', 'offer'].includes(j.status.toLowerCase()));
+  if (referralJobs.length > 0 && (referralInterviews.length / referralJobs.length) > 0.4) {
+    recommendations.push("Most of your interviews came from referrals. Double down on networking and warm outreach.");
+  } else {
+    recommendations.push("Referrals convert at a 3x higher rate than cold applications. Try reaching out to employees for internal referrals.");
+  }
+  
+  // Recommendation 2: Size success
+  const categories = {};
+  jobs.forEach(j => {
+    const cat = j.category || 'Mid-Sized';
+    if (!categories[cat]) categories[cat] = { total: 0, converted: 0 };
+    categories[cat].total++;
+    if (['interviewing', 'offer'].includes(j.status.toLowerCase())) {
+      categories[cat].converted++;
+    }
+  });
+  let bestCategory = 'Mid-Sized';
+  let bestCategoryRate = 0;
+  Object.keys(categories).forEach(cat => {
+    const rate = categories[cat].converted / categories[cat].total;
+    if (rate > bestCategoryRate && categories[cat].total >= 2) {
+      bestCategoryRate = rate;
+      bestCategory = cat;
+    }
+  });
+  if (bestCategoryRate > 0) {
+    recommendations.push(`You have a higher success rate applying to ${bestCategory.toLowerCase()} companies.`);
+  } else {
+    recommendations.push("Mid-sized tech companies (100-500 employees) currently have the fastest response times.");
+  }
+  
+  // Recommendation 3: Best title
+  if (metrics.bestTitle && metrics.interviewConversion > 0) {
+    recommendations.push(`Your response rate is highest for ${metrics.bestTitle} roles.`);
+  } else {
+    recommendations.push("Try tailoring your resume keywords specifically for product/engineering search optimization.");
+  }
+  
+  // Recommendation 4: Inactivity check
+  if (jobs.length === 0) {
+    recommendations.push("You haven't tracked any applications yet. Add or sync some jobs to kickstart your tracking!");
+  } else {
+    const sortedJobs = [...jobs].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    if (sortedJobs[0] && sortedJobs[0].date) {
+      const latestJobDate = new Date(sortedJobs[0].date + 'T12:00:00');
+      const diffTime = new Date() - latestJobDate;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays >= 7) {
+        recommendations.push(`You've had no application activity for ${diffDays} days. Consider applying to new roles to keep your funnel active.`);
+      } else {
+        recommendations.push("Recommendation: Keep your momentum! Apply to 2-3 targeted roles mid-week for maximum visibility.");
+      }
+    } else {
+      recommendations.push("Recommendation: Keep your momentum! Apply to 2-3 targeted roles mid-week for maximum visibility.");
+    }
+  }
+  
+  return recommendations;
+}
+
+async function renderInsights() {
+  const root = getAppViewRoot();
+  
+  // Show spinner loading state first
+  root.innerHTML = `
+    <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary);"></i>
+      <p style="color:var(--color-text-secondary); font-weight:500;">Computing AI analytics & charts...</p>
+    </div>
+  `;
+
+  try {
+    const [jobs, interviews] = await Promise.all([
+      fetchJobs(),
+      fetchInterviews()
+    ]);
+
+    const metrics = computeAnalyticsMetrics(jobs, interviews);
+    const recommendations = generateAIRecommendations(jobs, interviews, metrics);
+
+    // Grouping months for Line Chart
+    const months = [];
+    const counts = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = d.toLocaleDateString(undefined, { month: 'short' });
+      months.push(monthName);
+      
+      const monthJobs = jobs.filter(j => {
+        if (!j.date) return false;
+        const jd = new Date(j.date + 'T12:00:00');
+        return jd.getMonth() === d.getMonth() && jd.getFullYear() === d.getFullYear();
+      });
+      counts.push(monthJobs.length);
+    }
+
+    // SVG plotting variables
+    const maxCount = Math.max(...counts, 5);
+    const svgWidth = 500;
+    const svgHeight = 220;
+    const padLeft = 45;
+    const padRight = 20;
+    const padTop = 20;
+    const padBottom = 35;
+    const drawWidth = svgWidth - padLeft - padRight;
+    const drawHeight = svgHeight - padTop - padBottom;
+
+    // Generate path and points
+    let pathD = '';
+    const points = [];
+    counts.forEach((val, i) => {
+      const x = padLeft + i * (drawWidth / 5);
+      const y = svgHeight - padBottom - (val / maxCount) * drawHeight;
+      points.push({ x, y, val, month: months[i] });
+      if (i === 0) {
+        pathD = `M ${x} ${y}`;
+      } else {
+        pathD += ` L ${x} ${y}`;
+      }
+    });
+
+    // Funnel percentages
+    const totalCount = jobs.length;
+    const assessmentCount = jobs.filter(j => ['assessment', 'interviewing', 'offer'].includes(j.status.toLowerCase())).length;
+    const interviewingCount = jobs.filter(j => ['interviewing', 'offer'].includes(j.status.toLowerCase())).length;
+    const offerCount = jobs.filter(j => j.status.toLowerCase() === 'offer').length;
+
+    const assessmentPct = totalCount > 0 ? Math.round((assessmentCount / totalCount) * 100) : 0;
+    const interviewingPct = totalCount > 0 ? Math.round((interviewingCount / totalCount) * 100) : 0;
+    const offerPct = totalCount > 0 ? Math.round((offerCount / totalCount) * 100) : 0;
+
+    // Platform breakdown
+    const platforms = ['LinkedIn', 'Indeed', 'Referral', 'Career Page', 'Other'];
+    const platformData = platforms.map(plat => {
+      const platJobs = jobs.filter(j => (j.source || 'Other').toLowerCase().includes(plat.toLowerCase() === 'career page' ? 'career' : plat.toLowerCase()));
+      const platInterviews = platJobs.filter(j => ['interviewing', 'offer'].includes(j.status.toLowerCase()));
+      const rate = platJobs.length > 0 ? Math.round((platInterviews.length / platJobs.length) * 100) : 0;
+      return { name: plat, count: platJobs.length, rate };
+    }).sort((a, b) => b.count - a.count);
+
+    // Status list counts
+    const statusLabels = {
+      'applied': { name: 'Applied', color: '#3B82F6' },
+      'assessment': { name: 'Assessment', color: '#F59E0B' },
+      'interviewing': { name: 'Interviewing', color: '#8B5CF6' },
+      'offer': { name: 'Offer', color: '#10B981' },
+      'rejected': { name: 'Rejected', color: '#EF4444' }
+    };
+
+    root.innerHTML = `
+      <div class="insights-page-container">
+        <!-- Header -->
+        <div style="margin-bottom: 28px;">
+          <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary);">AI Insights & Analytics</h1>
+          <p style="color: var(--color-text-secondary); margin-top: 4px;">Track funnel stages, platform performance, and custom recommendations.</p>
+        </div>
+
+        <!-- AI Recommendations Alert -->
+        <div class="recommendation-panel">
+          <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--color-primary); display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-brain" style="color: var(--color-secondary);"></i> AI Suggestions & Recommendations
+          </h3>
+          <div class="recommendations-list">
+            ${recommendations.map(rec => `
+              <div class="recommendation-item">
+                <i class="fas fa-lightbulb"></i>
+                <div class="recommendation-text">${rec}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Analytics Cards Row -->
+        <div class="insights-stats-grid">
+          <div class="insight-metric-card">
+            <div class="progress-ring-container">
+              <svg width="72" height="72">
+                <circle cx="36" cy="36" r="30" stroke="var(--color-border)" stroke-width="6" fill="transparent" />
+                <circle cx="36" cy="36" r="30" stroke="var(--color-primary)" stroke-width="6" fill="transparent"
+                  stroke-dasharray="188.4" stroke-dashoffset="${188.4 - (188.4 * metrics.successRate) / 100}"
+                  stroke-linecap="round" transform="rotate(-90 36 36)" />
+              </svg>
+              <div class="progress-ring-text">${metrics.successRate}%</div>
+            </div>
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Success Rate</div>
+              <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-top: 4px;">Active Funnel</div>
+            </div>
+          </div>
+
+          <div class="insight-metric-card">
+            <div class="progress-ring-container">
+              <svg width="72" height="72">
+                <circle cx="36" cy="36" r="30" stroke="var(--color-border)" stroke-width="6" fill="transparent" />
+                <circle cx="36" cy="36" r="30" stroke="var(--color-secondary)" stroke-width="6" fill="transparent"
+                  stroke-dasharray="188.4" stroke-dashoffset="${188.4 - (188.4 * metrics.interviewConversion) / 100}"
+                  stroke-linecap="round" transform="rotate(-90 36 36)" />
+              </svg>
+              <div class="progress-ring-text">${metrics.interviewConversion}%</div>
+            </div>
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Interview Rate</div>
+              <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-top: 4px;">Applied &rarr; Int</div>
+            </div>
+          </div>
+
+          <div class="insight-metric-card">
+            <div class="progress-ring-container">
+              <svg width="72" height="72">
+                <circle cx="36" cy="36" r="30" stroke="var(--color-border)" stroke-width="6" fill="transparent" />
+                <circle cx="36" cy="36" r="30" stroke="#10B981" stroke-width="6" fill="transparent"
+                  stroke-dasharray="188.4" stroke-dashoffset="${188.4 - (188.4 * metrics.offerConversion) / 100}"
+                  stroke-linecap="round" transform="rotate(-90 36 36)" />
+              </svg>
+              <div class="progress-ring-text">${metrics.offerConversion}%</div>
+            </div>
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Offer Conversion</div>
+              <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-top: 4px;">Int &rarr; Offer</div>
+            </div>
+          </div>
+
+          <div class="insight-metric-card" style="gap: 16px;">
+            <div style="background-color: rgba(139, 92, 246, 0.1); color: var(--color-secondary); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+              <i class="far fa-clock"></i>
+            </div>
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Avg Response</div>
+              <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-top: 4px;">${metrics.avgResponseTime} Days</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid Rows -->
+        <div class="charts-grid-row">
+          
+          <!-- Applications Over Time -->
+          <div class="chart-card">
+            <div class="chart-card-title">
+              <i class="fas fa-chart-line"></i> Applications Over Time
+            </div>
+            <div class="svg-chart-wrapper">
+              <svg viewBox="0 0 ${svgWidth} ${svgHeight}" preserveAspectRatio="xMidYMid meet">
+                <!-- Grid Lines -->
+                <line x1="${padLeft}" y1="${padTop}" x2="${svgWidth - padRight}" y2="${padTop}" class="chart-grid-line" />
+                <line x1="${padLeft}" y1="${padTop + drawHeight / 2}" x2="${svgWidth - padRight}" y2="${padTop + drawHeight / 2}" class="chart-grid-line" />
+                <line x1="${padLeft}" y1="${svgHeight - padBottom}" x2="${svgWidth - padRight}" y2="${svgHeight - padBottom}" style="stroke: var(--color-border); stroke-width: 1.5;" />
+                
+                <!-- Y-Axis Labels -->
+                <text x="${padLeft - 10}" y="${padTop + 4}" text-anchor="end" style="font-size: 0.75rem; fill: var(--color-text-secondary); font-weight: 600;">${maxCount}</text>
+                <text x="${padLeft - 10}" y="${padTop + drawHeight / 2 + 4}" text-anchor="end" style="font-size: 0.75rem; fill: var(--color-text-secondary); font-weight: 600;">${Math.round(maxCount / 2)}</text>
+                <text x="${padLeft - 10}" y="${svgHeight - padBottom + 4}" text-anchor="end" style="font-size: 0.75rem; fill: var(--color-text-secondary); font-weight: 600;">0</text>
+                
+                <!-- Line Path -->
+                <path d="${pathD}" fill="none" stroke="var(--color-secondary)" stroke-width="3" stroke-linecap="round" />
+                
+                <!-- Points and Labels -->
+                ${points.map(pt => `
+                  <circle cx="${pt.x}" cx-val="${pt.val}" cy="${pt.y}" r="5.5" class="chart-point" />
+                  <!-- Tooltip count values -->
+                  <text x="${pt.x}" y="${pt.y - 12}" text-anchor="middle" style="font-size: 0.75rem; fill: var(--color-primary); font-weight: 700;">${pt.val}</text>
+                  <!-- X-Axis Label -->
+                  <text x="${pt.x}" y="${svgHeight - padBottom + 20}" text-anchor="middle" style="font-size: 0.75rem; fill: var(--color-text-secondary); font-weight: 600;">${pt.month}</text>
+                `).join('')}
+              </svg>
+            </div>
+          </div>
+
+          <!-- Interview Funnel Card -->
+          <div class="chart-card">
+            <div class="chart-card-title">
+              <i class="fas fa-filter"></i> Conversion Funnel
+            </div>
+            <div class="funnel-container">
+              <div class="funnel-stage-wrapper">
+                <div class="funnel-stage" style="width: 100%; background: linear-gradient(90deg, #1E3A8A, var(--color-primary));">
+                  <div class="funnel-stage-label"><i class="fas fa-paper-plane"></i> Applied</div>
+                  <div class="funnel-stage-pct">${totalCount} Applications</div>
+                </div>
+              </div>
+              
+              <div class="funnel-stage-wrapper">
+                <div class="funnel-stage" style="width: ${Math.max(40, 100 * (assessmentCount / (totalCount || 1)))}%; background: #3B82F6;">
+                  <div class="funnel-stage-label"><i class="fas fa-tasks"></i> Assessment</div>
+                  <div class="funnel-stage-pct">${assessmentCount} (${assessmentPct}%)</div>
+                </div>
+              </div>
+
+              <div class="funnel-stage-wrapper">
+                <div class="funnel-stage" style="width: ${Math.max(40, 100 * (interviewingCount / (totalCount || 1)))}%; background: #8B5CF6;">
+                  <div class="funnel-stage-label"><i class="fas fa-comments"></i> Interviewing</div>
+                  <div class="funnel-stage-pct">${interviewingCount} (${interviewingPct}%)</div>
+                </div>
+              </div>
+
+              <div class="funnel-stage-wrapper">
+                <div class="funnel-stage" style="width: ${Math.max(40, 100 * (offerCount / (totalCount || 1)))}%; background: #10B981;">
+                  <div class="funnel-stage-label"><i class="fas fa-trophy"></i> Offers</div>
+                  <div class="funnel-stage-pct">${offerCount} (${offerPct}%)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="charts-grid-row">
+          
+          <!-- Status Distribution Card -->
+          <div class="chart-card" style="min-height: 320px;">
+            <div class="chart-card-title">
+              <i class="fas fa-chart-pie"></i> Status Breakdown
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px; flex-grow: 1; justify-content: center;">
+              ${Object.keys(statusLabels).map(key => {
+                const count = jobs.filter(j => j.status.toLowerCase() === key).length;
+                const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+                const status = statusLabels[key];
+                return `
+                  <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--color-text);">
+                      <span style="width: 12px; height: 12px; border-radius: 3px; background-color: ${status.color}; display: inline-block;"></span>
+                      ${status.name}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                      <span style="font-weight: 700; color: var(--color-primary);">${count}</span>
+                      <span style="color: var(--color-text-secondary); width: 40px; text-align: right; font-size: 0.8rem; font-weight: 600;">${pct}%</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Platform Performance Card -->
+          <div class="chart-card" style="min-height: 320px;">
+            <div class="chart-card-title">
+              <i class="fas fa-globe"></i> Platform Yields
+            </div>
+            <div class="platform-bars-list">
+              ${platformData.map(plat => `
+                <div class="platform-bar-row">
+                  <div class="platform-bar-meta">
+                    <span>${plat.name}</span>
+                    <span style="color: var(--color-text-secondary); font-size: 0.8rem;">${plat.count} apps &bull; ${plat.rate}% Conversion</span>
+                  </div>
+                  <div class="platform-bar-container">
+                    <div class="platform-bar-fill" style="width: ${plat.count > 0 ? Math.max(8, plat.rate) : 0}%;"></div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error(err);
+    root.innerHTML = `
+      <div style="padding: 40px; text-align: center;">
+        <div style="background-color: var(--color-danger-light); color: var(--color-danger); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 24px auto;">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 8px;">Analytics Calculation Error</h2>
+        <p style="color: var(--color-text-secondary); margin-bottom: 24px;">${err.message}</p>
+        <button onclick="window.location.reload();" class="btn btn-primary">Retry</button>
+      </div>
+    `;
+  }
+}
 
 // 6B. INTERVIEWS PAGE
 async function renderInterviews() {
