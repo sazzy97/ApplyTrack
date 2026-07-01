@@ -8056,35 +8056,63 @@ async function renderJobAdvisor() {
 
           <!-- Advisor KPI Metrics Row -->
           <div class="dashboard-stats" style="margin-bottom: 28px;">
-            <div class="stat-card" style="border-bottom: 3px solid var(--color-primary); text-align: left;">
-              <div class="stat-icon total" style="background-color: var(--color-primary-light); color: var(--color-primary);"><i class="fas fa-briefcase"></i></div>
-              <div class="stat-info">
-                <span class="stat-num" style="display:block; font-size:1.5rem; font-weight:800; color:var(--color-primary);">${totalApps}</span>
-                <span class="stat-label" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600;">Total Applications</span>
+            <!-- Card 1: Total Applications -->
+            <div style="background: #FFFFFF; border: 1px solid var(--color-border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(37, 99, 235, 0.06); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                  <i class="far fa-clipboard"></i>
+                </div>
+                <span style="font-size: 0.68rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">TOTAL</span>
               </div>
-            </div>
-            
-            <div class="stat-card" style="border-bottom: 3px solid var(--color-secondary); text-align: left;">
-              <div class="stat-icon info" style="background-color: var(--color-secondary-light); color: var(--color-secondary);"><i class="fas fa-reply"></i></div>
-              <div class="stat-info">
-                <span class="stat-num" style="display:block; font-size:1.5rem; font-weight:800; color:var(--color-secondary);">${responseRate}%</span>
-                <span class="stat-label" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600;">Response Rate</span>
-              </div>
-            </div>
-
-            <div class="stat-card" style="border-bottom: 3px solid #10B981; text-align: left;">
-              <div class="stat-icon assessment" style="background-color: rgba(16, 185, 129, 0.08); color: #10B981;"><i class="fas fa-video"></i></div>
-              <div class="stat-info">
-                <span class="stat-num" style="display:block; font-size:1.5rem; font-weight:800; color:#10B981;">${interviewRate}%</span>
-                <span class="stat-label" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600;">Interview Conversion</span>
+              <div>
+                <div style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary); line-height: 1.1;">${totalApps}</div>
+                <div style="font-size: 0.8rem; color: #64748B; margin-top: 4px; font-weight: 500;">Total Applications</div>
               </div>
             </div>
 
-            <div class="stat-card" style="border-bottom: 3px solid #F59E0B; text-align: left;">
-              <div class="stat-icon alerts" style="background-color: rgba(245, 158, 11, 0.08); color: #F59E0B;"><i class="far fa-clock"></i></div>
-              <div class="stat-info">
-                <span class="stat-num" style="display:block; font-size:1.5rem; font-weight:800; color:#F59E0B;">6.4 Days</span>
-                <span class="stat-label" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600;">Avg. Response Time</span>
+            <!-- Card 2: Response Rate -->
+            <div style="background: #FFFFFF; border: 1px solid var(--color-border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(16, 185, 129, 0.06); color: #10B981; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                  <i class="fas fa-arrow-down" style="transform: rotate(135deg);"></i>
+                </div>
+                <span style="font-size: 0.68rem; font-weight: 700; color: #10B981; display: flex; align-items: center; gap: 4px;">
+                  <i class="fas fa-chart-line" style="font-size:0.6rem;"></i> +12%
+                </span>
+              </div>
+              <div>
+                <div style="font-size: 1.75rem; font-weight: 800; color: var(--color-text); line-height: 1.1;">${responseRate}%</div>
+                <div style="font-size: 0.8rem; color: #64748B; margin-top: 4px; font-weight: 500;">Response Rate</div>
+              </div>
+            </div>
+
+            <!-- Card 3: Interview Conversion -->
+            <div style="background: #FFFFFF; border: 1px solid var(--color-border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(139, 92, 246, 0.06); color: #8B5CF6; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                  <i class="far fa-comments"></i>
+                </div>
+                <span style="font-size: 0.68rem; font-weight: 700; color: #94A3B8; text-transform: uppercase;">Stable</span>
+              </div>
+              <div>
+                <div style="font-size: 1.75rem; font-weight: 800; color: var(--color-text); line-height: 1.1;">${interviewRate}%</div>
+                <div style="font-size: 0.8rem; color: #64748B; margin-top: 4px; font-weight: 500;">Interview Conversion</div>
+              </div>
+            </div>
+
+            <!-- Card 4: Avg. Response Time -->
+            <div style="background: #FFFFFF; border: 1px solid var(--color-border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(245, 158, 11, 0.06); color: #F59E0B; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                  <i class="far fa-clock"></i>
+                </div>
+                <span style="font-size: 0.68rem; font-weight: 700; color: #EF4444; display: flex; align-items: center; gap: 4px;">
+                  <i class="fas fa-caret-down"></i> -1.2d
+                </span>
+              </div>
+              <div>
+                <div style="font-size: 1.75rem; font-weight: 800; color: var(--color-text); line-height: 1.1;">6.4 Days</div>
+                <div style="font-size: 0.8rem; color: #64748B; margin-top: 4px; font-weight: 500;">Avg. Response Time</div>
               </div>
             </div>
           </div>
