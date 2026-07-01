@@ -398,8 +398,221 @@ function setButtonLoading(buttonEl, isLoading, defaultText = "Submit") {
    PAGE RENDERERS
    ========================================================================== */
 
+/* ==========================================================================
+   PLAN & FEATURE GATE SYSTEM
+   ========================================================================== */
+
+/**
+ * PLAN DEFINITIONS
+ * Change this one object to add/remove features from any tier.
+ * The UI reads from this — no need to touch individual render functions.
+ */
+const PLAN_FEATURES = {
+  free: {
+    label: 'Free',
+    aiRequestsPerMonth: 25,
+    features: [
+      'job_tracking', 'gmail_sync', 'kanban', 'interview_tracking',
+      'basic_analytics', 'email_support',
+    ],
+  },
+  pro: {
+    label: 'Pro',
+    aiRequestsPerMonth: Infinity,
+    features: [
+      'job_tracking', 'gmail_sync', 'kanban', 'interview_tracking',
+      'basic_analytics', 'email_support',
+      // Pro-only unlocks
+      'ai_resume_analyzer', 'ai_cover_letter', 'ai_interview_coach',
+      'ai_follow_up', 'ai_advisor', 'advanced_analytics',
+      'resume_library', 'cover_letter_library', 'calendar_integration',
+      'chrome_extension', 'ai_career_reports', 'priority_support',
+    ],
+  },
+  team: {
+    label: 'Team',
+    aiRequestsPerMonth: Infinity,
+    features: [
+      // Everything from Pro, plus team features
+      'job_tracking', 'gmail_sync', 'kanban', 'interview_tracking',
+      'basic_analytics', 'email_support',
+      'ai_resume_analyzer', 'ai_cover_letter', 'ai_interview_coach',
+      'ai_follow_up', 'ai_advisor', 'advanced_analytics',
+      'resume_library', 'cover_letter_library', 'calendar_integration',
+      'chrome_extension', 'ai_career_reports', 'priority_support',
+      'shared_workspace', 'team_dashboard', 'admin_controls',
+      'org_analytics', 'user_management', 'shared_templates',
+    ],
+  },
+};
+
+/**
+ * Feature metadata for upgrade prompt copy.
+ * featureKey → { name, icon, requiredPlan, description }
+ */
+const FEATURE_META = {
+  ai_resume_analyzer:  { name: 'AI Resume Analyzer',       icon: 'fas fa-file-alt',        requiredPlan: 'pro',  description: 'Get AI feedback on your resume with tailored suggestions and ATS scoring.' },
+  ai_cover_letter:     { name: 'AI Cover Letter Generator', icon: 'fas fa-envelope-open-text',requiredPlan: 'pro', description: 'Generate personalised, job-specific cover letters in seconds.' },
+  ai_interview_coach:  { name: 'AI Interview Coach',        icon: 'fas fa-comments',         requiredPlan: 'pro',  description: 'Prepare for interviews with AI-generated questions and STAR-method feedback.' },
+  ai_follow_up:        { name: 'AI Follow-Up Writer',       icon: 'fas fa-paper-plane',      requiredPlan: 'pro',  description: 'Craft professional follow-up emails at the perfect time.' },
+  ai_advisor:          { name: 'AI Job Search Advisor',     icon: 'fas fa-brain',            requiredPlan: 'pro',  description: 'Get strategic AI recommendations based on your application activity.' },
+  advanced_analytics:  { name: 'Advanced Analytics',        icon: 'fas fa-chart-line',       requiredPlan: 'pro',  description: 'Deep-dive into your response rates, interview conversions and trends.' },
+  ai_career_reports:   { name: 'Weekly AI Career Reports',  icon: 'fas fa-newspaper',        requiredPlan: 'pro',  description: 'Receive a personalised weekly summary of your progress and goals.' },
+  resume_library:      { name: 'Resume Library',            icon: 'fas fa-layer-group',      requiredPlan: 'pro',  description: 'Store and manage multiple tailored resumes for different roles.' },
+  cover_letter_library:{ name: 'Cover Letter Library',      icon: 'fas fa-folder-open',      requiredPlan: 'pro',  description: 'Keep a library of cover letters ready to reuse and customise.' },
+  calendar_integration:{ name: 'Calendar Integration',      icon: 'fas fa-calendar-alt',     requiredPlan: 'pro',  description: 'Sync interview and follow-up deadlines directly to your calendar.' },
+  chrome_extension:    { name: 'Chrome Extension',          icon: 'fab fa-chrome',           requiredPlan: 'pro',  description: 'Track applications directly from LinkedIn and job boards with one click.' },
+  shared_workspace:    { name: 'Shared Workspace',          icon: 'fas fa-users',            requiredPlan: 'team', description: 'Collaborate with your team, coach, or career centre in a shared space.' },
+  team_dashboard:      { name: 'Team Dashboard',            icon: 'fas fa-th-large',         requiredPlan: 'team', description: 'Monitor all members\' progress from a central admin dashboard.' },
+  admin_controls:      { name: 'Admin Controls',            icon: 'fas fa-shield-alt',       requiredPlan: 'team', description: 'Manage user roles, permissions, and team settings.' },
+  org_analytics:       { name: 'Organisation Analytics',    icon: 'fas fa-sitemap',          requiredPlan: 'team', description: 'Track collective application outcomes across your organisation.' },
+};
+
+/**
+ * Returns the active plan for the current user.
+ * Reads from localStorage (mock) or currentProfile (Supabase).
+ * Default: 'free'.
+ */
+function getUserPlan() {
+  // Check local override first (for dev/demo testing)
+  const override = localStorage.getItem('applytrack_plan_override');
+  if (override && PLAN_FEATURES[override]) return override;
+
+  // Supabase profile field
+  if (currentProfile?.subscription_plan) return currentProfile.subscription_plan;
+
+  // Mock session
+  const sessionStr = localStorage.getItem('applytrack_session');
+  if (sessionStr) {
+    try {
+      const session = JSON.parse(sessionStr);
+      if (session?.profile?.subscription_plan) return session.profile.subscription_plan;
+    } catch (_) {}
+  }
+  return 'free';
+}
+
+/**
+ * Returns true if the current user's plan includes featureKey.
+ */
+function hasFeatureAccess(featureKey) {
+  const plan = getUserPlan();
+  return (PLAN_FEATURES[plan]?.features || []).includes(featureKey);
+}
+
+/**
+ * Returns true if user has AI requests remaining this month.
+ * Uses localStorage counter that resets monthly.
+ */
+function hasAIRequestsRemaining() {
+  const plan = getUserPlan();
+  const limit = PLAN_FEATURES[plan]?.aiRequestsPerMonth ?? 25;
+  if (limit === Infinity) return true;
+  const used = getAIRequestsUsed();
+  return used < limit;
+}
+
+function getAIRequestsUsed() {
+  const key = 'applytrack_ai_used_' + new Date().toISOString().slice(0, 7); // YYYY-MM
+  return parseInt(localStorage.getItem(key) || '0', 10);
+}
+
+function incrementAIRequestsUsed() {
+  const key = 'applytrack_ai_used_' + new Date().toISOString().slice(0, 7);
+  const used = getAIRequestsUsed();
+  localStorage.setItem(key, String(used + 1));
+}
+
+/**
+ * Returns the full upgrade prompt HTML block.
+ * Call this from the top of any gated render function.
+ *
+ * @param {string} featureKey  - key from FEATURE_META
+ * @param {string} [context]   - optional extra context shown under the title
+ */
+function getFeatureGateHTML(featureKey, context = '') {
+  const meta  = FEATURE_META[featureKey] || { name: featureKey, icon: 'fas fa-lock', requiredPlan: 'pro', description: 'Upgrade your plan to access this feature.' };
+  const plan  = meta.requiredPlan || 'pro';
+  const planLabel = PLAN_FEATURES[plan]?.label || 'Pro';
+
+  const proFeatures = [
+    'Unlimited AI Requests', 'AI Resume Analyzer', 'AI Interview Coach',
+    'AI Follow-Up Writer', 'Advanced Analytics', 'Priority Support',
+  ];
+  const teamFeatures = [
+    'Shared Workspace', 'Team Dashboard', 'Admin Controls',
+    'Organisation Analytics', 'User Management', 'Shared Templates',
+  ];
+  const bullets = plan === 'team' ? teamFeatures : proFeatures;
+
+  return `
+    <div style="display:flex; justify-content:center; align-items:center; min-height:520px; padding:40px 20px;">
+      <div class="feature-gate-card">
+
+        <!-- Lock icon -->
+        <div class="fgc-icon-wrap">
+          <i class="${meta.icon}"></i>
+        </div>
+
+        <!-- Copy -->
+        <div class="fgc-badge">${planLabel} Plan</div>
+        <h2 class="fgc-title">${meta.name}</h2>
+        <p class="fgc-desc">${meta.description}</p>
+        ${context ? `<p class="fgc-context">${context}</p>` : ''}
+
+        <!-- What's included -->
+        <div class="fgc-features-list">
+          <div class="fgc-features-label">Included in ${planLabel}</div>
+          <div class="fgc-features-grid">
+            ${bullets.map(f => `
+              <div class="fgc-feature-item">
+                <span class="fgc-check"><i class="fas fa-check"></i></span>
+                ${f}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- CTAs -->
+        <div class="fgc-ctas">
+          <a href="#/billing" id="fgc-upgrade-btn" class="fgc-btn fgc-btn--primary">
+            <i class="fas fa-bolt"></i> Upgrade to ${planLabel}
+          </a>
+          <a href="#/billing" id="fgc-compare-btn" class="fgc-btn fgc-btn--secondary" onclick="document.getElementById('btab-upgrade')?.click()">
+            <i class="fas fa-columns"></i> Compare Plans
+          </a>
+          <a href="https://applytrack.io/pricing" target="_blank" class="fgc-btn fgc-btn--ghost">
+            <i class="fas fa-external-link-alt"></i> Learn More
+          </a>
+        </div>
+
+        <!-- Trust note -->
+        <p class="fgc-trust">
+          <i class="fas fa-shield-alt"></i> Cancel anytime &bull; No lock-in &bull; Pro from $10/mo
+        </p>
+
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Shows a lightweight inline upgrade toast (non-blocking).
+ * Use for soft gates (e.g. AI request limit reached mid-session).
+ */
+function showAIQuotaToast() {
+  const plan = getUserPlan();
+  const limit = PLAN_FEATURES[plan]?.aiRequestsPerMonth ?? 25;
+  const used  = getAIRequestsUsed();
+  showToast(
+    `AI request limit reached (${used}/${limit}). <strong><a href="#/billing" style="color:#FFF; text-decoration:underline;">Upgrade to Pro</a></strong> for unlimited requests.`,
+    'warning'
+  );
+}
+
 // 1. LANDING PAGE
 function renderLanding() {
+
   const root = document.getElementById('app-root');
   root.innerHTML = `
     <!-- Hero Section -->
@@ -5685,25 +5898,25 @@ function renderAppShell(currentHash) {
             <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
           </a>
           <a href="#/insights" class="sidebar-link ${activeTab === 'insights' ? 'active' : ''}" id="sidebar-link-insights">
-            <i class="fas fa-brain"></i> <span>AI Insights</span>
+            <i class="fas fa-brain"></i> <span>AI Insights${!hasFeatureAccess('advanced_analytics') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
           <a href="#/advisor" class="sidebar-link ${activeTab === 'advisor' ? 'active' : ''}" id="sidebar-link-advisor">
-            <i class="fas fa-chalkboard-teacher"></i> <span>AI Search Advisor</span>
+            <i class="fas fa-chalkboard-teacher"></i> <span>AI Search Advisor${!hasFeatureAccess('ai_advisor') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
           <a href="#/interviews" class="sidebar-link ${activeTab === 'interviews' ? 'active' : ''}" id="sidebar-link-interviews">
             <i class="fas fa-calendar-alt"></i> <span>Interviews</span>
           </a>
           <a href="#/interview-coach" class="sidebar-link ${activeTab === 'interview-coach' ? 'active' : ''}" id="sidebar-link-interview-coach">
-            <i class="fas fa-user-graduate"></i> <span>Interview Coach</span>
+            <i class="fas fa-user-graduate"></i> <span>Interview Coach${!hasFeatureAccess('ai_interview_coach') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
           <a href="#/resume-analyzer" class="sidebar-link ${activeTab === 'resume-analyzer' ? 'active' : ''}" id="sidebar-link-resume-analyzer">
-            <i class="fas fa-file-invoice"></i> <span>Resume Analyzer</span>
+            <i class="fas fa-file-invoice"></i> <span>Resume Analyzer${!hasFeatureAccess('ai_resume_analyzer') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
           <a href="#/cover-letter" class="sidebar-link ${activeTab === 'cover-letter' ? 'active' : ''}" id="sidebar-link-cover-letter">
-            <i class="fas fa-file-signature"></i> <span>Cover Letter</span>
+            <i class="fas fa-file-signature"></i> <span>Cover Letter${!hasFeatureAccess('ai_cover_letter') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
           <a href="#/follow-up" class="sidebar-link ${activeTab === 'follow-up' ? 'active' : ''}" id="sidebar-link-follow-up">
-            <i class="fas fa-paper-plane"></i> <span>Follow-Up</span>
+            <i class="fas fa-paper-plane"></i> <span>Follow-Up${!hasFeatureAccess('ai_follow_up') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
           <a href="#/notifications" class="sidebar-link ${activeTab === 'notifications' ? 'active' : ''}" id="sidebar-link-notifications" style="position:relative; display:flex; align-items:center;">
             <i class="fas fa-bell"></i> <span>Notifications</span>
@@ -5742,25 +5955,25 @@ function renderAppShell(currentHash) {
           </div>
           <div class="mobile-drawer-body">
             <a href="#/insights" class="drawer-link" id="drawer-link-insights">
-              <i class="fas fa-brain"></i> AI Insights
+              <i class="fas fa-brain"></i> AI Insights${!hasFeatureAccess('advanced_analytics') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
             <a href="#/advisor" class="drawer-link" id="drawer-link-advisor">
-              <i class="fas fa-chalkboard-teacher"></i> AI Search Advisor
+              <i class="fas fa-chalkboard-teacher"></i> AI Search Advisor${!hasFeatureAccess('ai_advisor') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
             <a href="#/interviews" class="drawer-link" id="drawer-link-interviews">
               <i class="fas fa-calendar-alt"></i> Interviews
             </a>
             <a href="#/interview-coach" class="drawer-link" id="drawer-link-interview-coach">
-              <i class="fas fa-user-graduate"></i> Interview Coach
+              <i class="fas fa-user-graduate"></i> Interview Coach${!hasFeatureAccess('ai_interview_coach') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
             <a href="#/resume-analyzer" class="drawer-link" id="drawer-link-resume-analyzer">
-              <i class="fas fa-file-invoice"></i> Resume Analyzer
+              <i class="fas fa-file-invoice"></i> Resume Analyzer${!hasFeatureAccess('ai_resume_analyzer') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
             <a href="#/cover-letter" class="drawer-link" id="drawer-link-cover-letter">
-              <i class="fas fa-file-signature"></i> Cover Letter
+              <i class="fas fa-file-signature"></i> Cover Letter${!hasFeatureAccess('ai_cover_letter') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
             <a href="#/follow-up" class="drawer-link" id="drawer-link-follow-up">
-              <i class="fas fa-paper-plane"></i> Follow-Up
+              <i class="fas fa-paper-plane"></i> Follow-Up${!hasFeatureAccess('ai_follow_up') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
             <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
               <i class="fas fa-map-signs"></i> Setup Guide
@@ -6227,6 +6440,11 @@ function generateAIRecommendations(jobs, interviews, metrics) {
 
 async function renderInsights() {
   const root = getAppViewRoot();
+
+  if (!hasFeatureAccess('advanced_analytics')) {
+    root.innerHTML = getFeatureGateHTML('advanced_analytics');
+    return;
+  }
   
   // Show spinner loading state first
   root.innerHTML = `
@@ -6542,6 +6760,11 @@ async function renderInsights() {
 // 6A-2. AI RESUME ANALYZER PAGE
 async function renderResumeAnalyzer() {
   const root = getAppViewRoot();
+
+  if (!hasFeatureAccess('ai_resume_analyzer')) {
+    root.innerHTML = getFeatureGateHTML('ai_resume_analyzer');
+    return;
+  }
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
@@ -6996,6 +7219,11 @@ async function renderResumeAnalyzer() {
 // 6A-3. AI COVER LETTER GENERATOR PAGE
 async function renderCoverLetter() {
   const root = getAppViewRoot();
+
+  if (!hasFeatureAccess('ai_cover_letter')) {
+    root.innerHTML = getFeatureGateHTML('ai_cover_letter');
+    return;
+  }
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
@@ -7467,6 +7695,11 @@ async function renderCoverLetter() {
 // 6A-4. AI FOLLOW-UP ASSISTANT PAGE
 async function renderFollowUp() {
   const root = getAppViewRoot();
+
+  if (!hasFeatureAccess('ai_follow_up')) {
+    root.innerHTML = getFeatureGateHTML('ai_follow_up');
+    return;
+  }
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
@@ -7969,6 +8202,11 @@ async function renderFollowUp() {
 // 6A-5. AI INTERVIEW COACH PAGE
 async function renderInterviewCoach() {
   const root = getAppViewRoot();
+
+  if (!hasFeatureAccess('ai_interview_coach')) {
+    root.innerHTML = getFeatureGateHTML('ai_interview_coach');
+    return;
+  }
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
@@ -8688,6 +8926,11 @@ async function renderInterviewCoach() {
 // 6A-6. AI JOB SEARCH ADVISOR PAGE
 async function renderJobAdvisor() {
   const root = getAppViewRoot();
+
+  if (!hasFeatureAccess('ai_advisor')) {
+    root.innerHTML = getFeatureGateHTML('ai_advisor');
+    return;
+  }
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">

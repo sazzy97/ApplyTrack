@@ -6589,6 +6589,232 @@ input:checked + .slider:before {
 }
 
 
+/* =========================================================
+   FEATURE GATE CARD  —  Upgrade Prompt
+   ========================================================= */
+
+.feature-gate-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 44px 40px 36px;
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  animation: fgcFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fgcFadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Feature icon circle */
+.fgc-icon-wrap {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-secondary-light), #E0E7FF);
+  color: var(--color-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin: 0 auto 20px;
+  box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.06);
+}
+
+/* Plan badge pill */
+.fgc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #F59E0B, #EF4444);
+  color: #FFFFFF;
+  margin-bottom: 14px;
+}
+
+/* Heading */
+.fgc-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: -0.025em;
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+
+/* Description */
+.fgc-desc {
+  font-size: 0.92rem;
+  color: var(--color-text-secondary);
+  line-height: 1.65;
+  margin-bottom: 6px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Optional context line */
+.fgc-context {
+  font-size: 0.82rem;
+  color: var(--color-text-light);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+/* Feature bullet list */
+.fgc-features-list {
+  background: #F8FAFC;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.fgc-features-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-light);
+  margin-bottom: 12px;
+}
+
+.fgc-features-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+
+@media (max-width: 480px) {
+  .fgc-features-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fgc-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.83rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.fgc-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  flex-shrink: 0;
+}
+
+/* CTA buttons row */
+.fgc-ctas {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.fgc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 22px;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  border: none;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.fgc-btn--primary {
+  background: var(--color-primary);
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(13, 27, 75, 0.18);
+}
+
+.fgc-btn--primary:hover {
+  background: var(--color-primary-light);
+  box-shadow: 0 6px 20px rgba(13, 27, 75, 0.26);
+  transform: translateY(-1px);
+  color: #FFFFFF;
+}
+
+.fgc-btn--secondary {
+  background: var(--color-secondary-light);
+  color: var(--color-secondary);
+}
+
+.fgc-btn--secondary:hover {
+  background: var(--color-secondary);
+  color: #FFFFFF;
+}
+
+.fgc-btn--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1.5px solid var(--color-border);
+}
+
+.fgc-btn--ghost:hover {
+  border-color: var(--color-border-hover);
+  color: var(--color-primary);
+  background: #F8FAFC;
+}
+
+/* Trust footnote */
+.fgc-trust {
+  font-size: 0.75rem;
+  color: var(--color-text-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* =========================================================
+   NAV SIDEBAR — Pro lock badges on gated links
+   ========================================================= */
+
+.nav-pro-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #F59E0B, #EF4444);
+  color: #FFFFFF;
+  margin-left: 6px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+
+
 
 
 
