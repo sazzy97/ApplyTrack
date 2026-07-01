@@ -5369,7 +5369,7 @@ async function renderResumeAnalyzer() {
             <div style="display: flex; flex-direction: column; gap: 24px;">
               
               <!-- Resume Upload Zone Card -->
-              <div class="card" style="padding: 24px;">
+              <div class="resume-history-card">
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
                   <i class="fas fa-file-upload" style="color: #2563EB;"></i> Upload Resume Version
                 </h3>
@@ -5399,7 +5399,7 @@ async function renderResumeAnalyzer() {
               </div>
 
               <!-- Job Description Card -->
-              <div class="card" style="padding: 24px;">
+              <div class="resume-history-card">
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
                   <i class="fas fa-briefcase" style="color: #2563EB;"></i> Job Description
                 </h3>

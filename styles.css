@@ -5370,7 +5370,7 @@ input:checked + .slider:before {
 /* Split Pane grids */
 .analyzer-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1.3fr;
+  grid-template-columns: 1.3fr 0.9fr;
   gap: 28px;
 }
 
