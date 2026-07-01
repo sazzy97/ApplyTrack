@@ -696,194 +696,7 @@ function renderLanding() {
 
         </div><!-- /pricing-cards-grid -->
 
-        <!-- ===================================
-             FEATURE COMPARISON TABLE
-             =================================== -->
-        <div class="pricing-comparison-section">
-          <h3>Compare all features</h3>
-          <div class="pricing-table-wrap">
-            <table class="pricing-table" aria-label="Feature comparison table">
-              <thead>
-                <tr>
-                  <th scope="col">Feature</th>
-                  <th scope="col">Free</th>
-                  <th scope="col" class="col-pro"><span class="col-pro-name">Pro</span>Most Popular</th>
-                  <th scope="col">Team</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Core -->
-                <tr class="row-category">
-                  <td colspan="4">Core Tracking</td>
-                </tr>
-                <tr>
-                  <td>Unlimited Job Applications</td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Gmail Sync</td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Kanban Dashboard</td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Interview Tracking</td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <!-- AI Features -->
-                <tr class="row-category">
-                  <td colspan="4">AI Features</td>
-                </tr>
-                <tr>
-                  <td>AI Requests</td>
-                  <td><span class="check-partial">25 / month</span></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i> Unlimited</td>
-                  <td><i class="fas fa-check check-yes"></i> Unlimited</td>
-                </tr>
-                <tr>
-                  <td>AI Resume Analyzer</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>AI Cover Letter Generator</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>AI Interview Coach</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>AI Follow-Up Writer</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>AI Career Assistant (Advisor)</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Weekly AI Career Reports</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <!-- Libraries -->
-                <tr class="row-category">
-                  <td colspan="4">Libraries &amp; Integrations</td>
-                </tr>
-                <tr>
-                  <td>Resume Library</td>
-                  <td><span class="check-partial">1 resume</span></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i> Unlimited</td>
-                  <td><i class="fas fa-check check-yes"></i> Shared</td>
-                </tr>
-                <tr>
-                  <td>Cover Letter Library</td>
-                  <td><span class="check-partial">1 template</span></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i> Unlimited</td>
-                  <td><i class="fas fa-check check-yes"></i> Shared</td>
-                </tr>
-                <tr>
-                  <td>Calendar Sync</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Chrome Extension</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <!-- Analytics -->
-                <tr class="row-category">
-                  <td colspan="4">Analytics &amp; Insights</td>
-                </tr>
-                <tr>
-                  <td>Basic Analytics</td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Advanced Analytics</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Company Insights</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <!-- Team -->
-                <tr class="row-category">
-                  <td colspan="4">Team &amp; Collaboration</td>
-                </tr>
-                <tr>
-                  <td>Team Collaboration</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-times check-no"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Admin Panel &amp; User Management</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-times check-no"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Organisation Analytics</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-times check-no"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <!-- Support -->
-                <tr class="row-category">
-                  <td colspan="4">Support</td>
-                </tr>
-                <tr>
-                  <td>Email Support</td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Priority Support</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-                <tr>
-                  <td>Dedicated Support</td>
-                  <td><i class="fas fa-times check-no"></i></td>
-                  <td class="col-pro-cell"><i class="fas fa-times check-no"></i></td>
-                  <td><i class="fas fa-check check-yes"></i></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div><!-- /comparison -->
+
 
         <!-- ===================================
              FAQ SECTION
@@ -892,7 +705,7 @@ function renderLanding() {
           <h3>Frequently asked questions</h3>
           <p>Have more questions? <a href="mailto:hello@applytrack.io" style="color:var(--color-secondary); font-weight:600;">Email us</a> and we'll reply within 24 hours.</p>
 
-          <div class="faq-grid">
+          <div class="faq-grid faq-grid--full">
 
             <div class="faq-item" id="faq-1">
               <div class="faq-question" role="button" tabindex="0" aria-expanded="false" aria-controls="faq-answer-1">
@@ -5152,6 +4965,383 @@ async function renderNotifications() {
 }
 
 // 7. SETTINGS PAGE
+// =====================================================
+// BILLING & SUBSCRIPTION PAGE
+// =====================================================
+function renderBilling() {
+  const root = getAppViewRoot();
+
+  // ── Placeholder data ──────────────────────────────
+  const plan = 'free'; // 'free' | 'pro' | 'team'
+  const planLabel = plan === 'pro' ? 'Pro' : plan === 'team' ? 'Team' : 'Free';
+  const renewalDate = 'N/A';
+  const billingCycle = plan === 'free' ? 'Free forever' : 'Monthly';
+  const planStatus = 'Active';
+
+  const usage = {
+    aiRequests:   { used: 18,  total: 25,    label: 'AI Requests' },
+    resumes:      { used: 1,   total: 1,     label: 'Resume Analyses' },
+    coverLetters: { used: 1,   total: 1,     label: 'Cover Letters Generated' },
+    storage:      { used: 12,  total: 200,   label: 'Storage (MB)' },
+    calEvents:    { used: 0,   total: 5,     label: 'Calendar Events' },
+    integrations: { used: 1,   total: 2,     label: 'Connected Integrations' },
+  };
+
+  const invoices = [
+    { id: 'INV-20240601', date: 'Jun 1, 2024', amount: '$0.00', status: 'Free' },
+    { id: 'INV-20240501', date: 'May 1, 2024', amount: '$0.00', status: 'Free' },
+    { id: 'INV-20240401', date: 'Apr 1, 2024', amount: '$12.00', status: 'Paid' },
+  ];
+
+  const cards = [
+    { brand: 'Visa', last4: '4242', expiry: '12/26', isDefault: true },
+    { brand: 'Mastercard', last4: '5555', expiry: '09/25', isDefault: false },
+  ];
+
+  // ── Helper: progress bar ──────────────────────────
+  function usageBar(item) {
+    const pct = Math.min(100, Math.round((item.used / item.total) * 100));
+    const color = pct >= 90 ? '#EF4444' : pct >= 70 ? '#F59E0B' : '#10B981';
+    return `
+      <div class="billing-usage-item">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.84rem; font-weight:600; color:var(--color-primary);">${item.label}</span>
+          <span style="font-size:0.78rem; color:var(--color-text-secondary); font-weight:600;">${item.used} / ${item.total}</span>
+        </div>
+        <div style="height:6px; background:#F1F5F9; border-radius:999px; overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background:${color}; border-radius:999px; transition:width 0.6s cubic-bezier(0.16,1,0.3,1);"></div>
+        </div>
+        <div style="font-size:0.72rem; color:var(--color-text-secondary); margin-top:4px;">${item.total - item.used} remaining</div>
+      </div>
+    `;
+  }
+
+  root.innerHTML = `
+    <div class="settings-page-container">
+
+      <!-- Page header -->
+      <div style="margin-bottom:28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div>
+          <h1 class="page-title" style="margin-bottom:4px;">Billing &amp; Subscription</h1>
+          <p style="color:var(--color-text-secondary); font-size:0.95rem;">Manage your plan, usage, payment methods, and invoices.</p>
+        </div>
+        <a href="#/settings" style="font-size:0.82rem; color:var(--color-secondary); font-weight:600; display:flex; align-items:center; gap:6px;">
+          <i class="fas fa-chevron-left" style="font-size:0.7rem;"></i> Back to Settings
+        </a>
+      </div>
+
+      <!-- Sub-tabs -->
+      <div class="settings-tabs-row" style="margin-bottom:28px;">
+        <button class="settings-tab-btn active" id="btab-overview"><i class="fas fa-layer-group"></i> Overview</button>
+        <button class="settings-tab-btn" id="btab-usage"><i class="fas fa-chart-bar"></i> Usage</button>
+        <button class="settings-tab-btn" id="btab-upgrade"><i class="fas fa-bolt"></i> Upgrade Plans</button>
+        <button class="settings-tab-btn" id="btab-history"><i class="fas fa-receipt"></i> Billing History</button>
+        <button class="settings-tab-btn" id="btab-payment"><i class="fas fa-credit-card"></i> Payment Methods</button>
+      </div>
+
+      <!-- ── TAB: OVERVIEW ───────────────────────────── -->
+      <div id="billing-panel-overview">
+
+        <!-- Current plan hero card -->
+        <div class="plan-current-card" style="margin-bottom:24px;">
+          <div>
+            <div class="plan-current-badge">Current Plan</div>
+            <div class="plan-current-name">${planLabel} Plan</div>
+            <div class="plan-current-desc">
+              Billing Cycle: ${billingCycle} &bull; Renewal: ${renewalDate} &bull; Status: 
+              <span style="background:rgba(16,185,129,0.15); color:#6EE7B7; padding:2px 8px; border-radius:999px; font-size:0.7rem; font-weight:700;">${planStatus}</span>
+            </div>
+          </div>
+          ${plan === 'free' ? `<button class="plan-upgrade-btn" id="billing-upgrade-cta"><i class="fas fa-bolt"></i> Upgrade to Pro</button>` : `<button class="plan-upgrade-btn" id="billing-manage-btn" style="background:rgba(255,255,255,0.12); color:#FFFFFF; border:1px solid rgba(255,255,255,0.2);">Manage Plan</button>`}
+        </div>
+
+        <!-- Quick-stat cards -->
+        <div class="dashboard-stats" style="margin-bottom:28px;">
+          <div style="background:#FFFFFF; border:1px solid var(--color-border); border-radius:12px; padding:18px; box-shadow:var(--shadow-sm);">
+            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#94A3B8; letter-spacing:0.06em; margin-bottom:8px;">AI Requests Used</div>
+            <div style="font-size:1.5rem; font-weight:800; color:var(--color-primary);">${usage.aiRequests.used}<span style="font-size:0.9rem; font-weight:600; color:#94A3B8;">/${usage.aiRequests.total}</span></div>
+          </div>
+          <div style="background:#FFFFFF; border:1px solid var(--color-border); border-radius:12px; padding:18px; box-shadow:var(--shadow-sm);">
+            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#94A3B8; letter-spacing:0.06em; margin-bottom:8px;">Storage Used</div>
+            <div style="font-size:1.5rem; font-weight:800; color:var(--color-secondary);">${usage.storage.used}MB<span style="font-size:0.9rem; font-weight:600; color:#94A3B8;">/${usage.storage.total}MB</span></div>
+          </div>
+          <div style="background:#FFFFFF; border:1px solid var(--color-border); border-radius:12px; padding:18px; box-shadow:var(--shadow-sm);">
+            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#94A3B8; letter-spacing:0.06em; margin-bottom:8px;">Applications Tracked</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#10B981;">∞</div>
+          </div>
+          <div style="background:#FFFFFF; border:1px solid var(--color-border); border-radius:12px; padding:18px; box-shadow:var(--shadow-sm);">
+            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#94A3B8; letter-spacing:0.06em; margin-bottom:8px;">Connected Accounts</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#8B5CF6;">1 <span style="font-size:0.9rem; font-weight:600; color:#94A3B8;">/ 2</span></div>
+          </div>
+        </div>
+
+        <!-- Cancel / Pause block -->
+        <div class="settings-card">
+          <h3 class="settings-card-title" style="color:var(--color-danger);">Danger Zone</h3>
+          <div class="settings-item-row">
+            <div class="settings-item-info">
+              <span class="settings-item-label">Cancel Subscription</span>
+              <span class="settings-item-desc">You will lose access to Pro features at end of current billing period. Your data is preserved.</span>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="settings-action-btn" id="billing-pause-btn" style="border-color:#F59E0B; color:#F59E0B;"><i class="fas fa-pause-circle"></i> Pause</button>
+              <button class="settings-action-btn disconnect" id="billing-cancel-btn"><i class="fas fa-times-circle"></i> Cancel Plan</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /overview -->
+
+      <!-- ── TAB: USAGE ──────────────────────────────── -->
+      <div id="billing-panel-usage" style="display:none;">
+        <div class="settings-card">
+          <h3 class="settings-card-title">Monthly Usage Dashboard</h3>
+          <p style="font-size:0.84rem; color:var(--color-text-secondary); margin-bottom:24px;">Usage resets on the 1st of each month. Upgrade to Pro for unlimited AI requests.</p>
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
+            ${Object.values(usage).map(usageBar).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: UPGRADE PLANS ─────────────────────── -->
+      <div id="billing-panel-upgrade" style="display:none;">
+        <div class="pricing-cards-grid" style="max-width:100%; margin-bottom:0;">
+
+          <!-- Free -->
+          <div class="pricing-card ${plan==='free' ? 'pricing-card--current' : ''}" style="${plan==='free' ? 'border:2px solid var(--color-secondary);' : ''}">
+            ${plan==='free' ? '<span class="pricing-badge pricing-badge--free"><i class="fas fa-check"></i> Current Plan</span>' : '<span class="pricing-badge pricing-badge--free"><i class="fas fa-seedling"></i> Free</span>'}
+            <div class="pricing-card__name">Starter</div>
+            <div class="pricing-card__price"><span class="pricing-card__currency">$</span><span class="pricing-card__amount">0</span></div>
+            <div class="pricing-card__period">per month · Free forever</div>
+            <div class="pricing-card__billing-note">&nbsp;</div>
+            <a href="#/signup" class="pricing-card__cta pricing-card__cta--free" style="pointer-events:${plan==='free'?'none':'auto'}; opacity:${plan==='free'?0.5:1};">
+              ${plan==='free' ? 'Your current plan' : 'Downgrade to Free'}
+            </a>
+            <div class="pricing-card__divider"></div>
+            <ul class="pricing-card__features">
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>25 AI Requests / month</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>1 Resume · 1 Cover Letter</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Basic Analytics</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Gmail Integration</li>
+            </ul>
+          </div>
+
+          <!-- Pro (highlighted) -->
+          <div class="pricing-card pricing-card--pro">
+            <span class="pricing-badge pricing-badge--popular"><i class="fas fa-fire"></i> Most Popular</span>
+            <div class="pricing-card__name">Pro</div>
+            <div class="pricing-card__price"><span class="pricing-card__currency">$</span><span class="pricing-card__amount">12</span></div>
+            <div class="pricing-card__period">per month</div>
+            <div class="pricing-card__billing-note">Billed monthly · Cancel anytime</div>
+            <button class="pricing-card__cta pricing-card__cta--pro" id="billing-upgrade-pro-btn">
+              ${plan==='pro' ? 'Current Plan ✓' : 'Upgrade to Pro ⚡'}
+            </button>
+            <div class="pricing-card__divider"></div>
+            <ul class="pricing-card__features">
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Unlimited AI Requests</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>All AI Tools Unlocked</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Resume &amp; Cover Letter Library</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Advanced Analytics</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Priority Support</li>
+            </ul>
+          </div>
+
+          <!-- Team -->
+          <div class="pricing-card">
+            <span class="pricing-badge" style="background:rgba(13,27,75,0.06); color:var(--color-primary);"><i class="fas fa-clock"></i> Coming Soon</span>
+            <div class="pricing-card__name">Team</div>
+            <div class="pricing-card__price"><span class="pricing-card__amount" style="font-size:2rem; color:var(--color-primary);">Custom</span></div>
+            <div class="pricing-card__period">contact us for pricing</div>
+            <div class="pricing-card__billing-note">&nbsp;</div>
+            <a href="mailto:team@applytrack.io" class="pricing-card__cta pricing-card__cta--team">Contact Sales <i class="fas fa-envelope"></i></a>
+            <div class="pricing-card__divider"></div>
+            <ul class="pricing-card__features">
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Everything in Pro</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Multiple Members</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Shared Workspace</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Dedicated Support</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── TAB: BILLING HISTORY ────────────────────── -->
+      <div id="billing-panel-history" style="display:none;">
+        <div class="settings-card">
+          <h3 class="settings-card-title">Billing History</h3>
+          <div class="pricing-table-wrap">
+            <table class="pricing-table" aria-label="Billing history">
+              <thead>
+                <tr>
+                  <th scope="col">Invoice</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Amount</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${invoices.map(inv => `
+                  <tr>
+                    <td style="font-family:monospace; font-size:0.82rem; color:var(--color-text-secondary);">${inv.id}</td>
+                    <td>${inv.date}</td>
+                    <td style="font-weight:700;">${inv.amount}</td>
+                    <td>
+                      <span style="font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:999px;
+                        background:${inv.status==='Paid' ? '#ECFDF5' : '#F1F5F9'};
+                        color:${inv.status==='Paid' ? '#059669' : '#64748B'};">
+                        ${inv.status}
+                      </span>
+                    </td>
+                    <td style="text-align:right;">
+                      <button class="settings-action-btn" style="font-size:0.72rem; padding:4px 10px;" onclick="showToast('Downloading invoice ${inv.id}…', 'info')">
+                        <i class="fas fa-download"></i> Download
+                      </button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: PAYMENT METHODS ───────────────────── -->
+      <div id="billing-panel-payment" style="display:none;">
+        <div class="settings-card">
+          <h3 class="settings-card-title">Payment Methods</h3>
+          <p style="font-size:0.82rem; color:var(--color-text-secondary); margin-bottom:20px;">
+            Payments are securely processed via Stripe. We never store your card details.
+          </p>
+
+          <!-- Saved cards -->
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px;" id="saved-cards-list">
+            ${cards.map((c, idx) => `
+              <div class="billing-card-row" data-idx="${idx}">
+                <div style="display:flex; align-items:center; gap:14px;">
+                  <div style="width:44px; height:30px; background:${c.brand==='Visa'?'#1a1f71':'#EB001B'}; border-radius:5px; display:flex; align-items:center; justify-content:center; color:#FFF; font-size:0.7rem; font-weight:800; letter-spacing:0.05em;">${c.brand}</div>
+                  <div>
+                    <div style="font-weight:700; font-size:0.88rem; color:var(--color-primary);">${c.brand} ending ····${c.last4}</div>
+                    <div style="font-size:0.75rem; color:var(--color-text-secondary);">Expires ${c.expiry}</div>
+                  </div>
+                  ${c.isDefault ? `<span style="margin-left:8px; font-size:0.65rem; font-weight:700; text-transform:uppercase; background:var(--color-secondary-light); color:var(--color-secondary); padding:2px 8px; border-radius:999px;">Default</span>` : ''}
+                </div>
+                <div style="display:flex; gap:8px;">
+                  ${!c.isDefault ? `<button class="settings-action-btn" style="font-size:0.72rem; padding:4px 10px;" onclick="showToast('Set as default payment method', 'success')"><i class="far fa-check-circle"></i> Set Default</button>` : ''}
+                  <button class="settings-action-btn disconnect" style="font-size:0.72rem; padding:4px 10px;" onclick="showToast('Card removed', 'info')"><i class="far fa-trash-alt"></i></button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <button class="settings-action-btn" id="add-card-btn" style="border-color:var(--color-secondary); color:var(--color-secondary);">
+            <i class="fas fa-plus"></i> Add New Card
+          </button>
+
+          <!-- Payment provider note -->
+          <div style="margin-top:24px; padding:14px 16px; background:#F8FAFC; border:1px solid var(--color-border); border-radius:var(--radius-sm); font-size:0.8rem; color:var(--color-text-secondary); display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-shield-alt" style="color:#10B981; font-size:1rem;"></i>
+            <span>Payments processed via <strong>Stripe</strong>. Provider-agnostic architecture supports <strong>Paystack</strong> &amp; <strong>Flutterwave</strong> without UI redesign.</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /billing page container -->
+
+    <!-- Cancel Confirmation Modal (hidden by default) -->
+    <div id="billing-cancel-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center; padding:24px;">
+      <div style="background:#FFFFFF; border-radius:16px; padding:32px; max-width:480px; width:100%; box-shadow:0 24px 64px rgba(0,0,0,0.18);">
+        <div style="width:48px; height:48px; border-radius:50%; background:#FEF2F2; color:#EF4444; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:16px;">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3 style="font-size:1.2rem; font-weight:800; color:var(--color-primary); margin-bottom:8px;">Cancel your subscription?</h3>
+        <p style="font-size:0.85rem; color:var(--color-text-secondary); line-height:1.6; margin-bottom:20px;">
+          You will lose access to the following at the end of your billing period:
+        </p>
+        <ul style="list-style:none; display:flex; flex-direction:column; gap:8px; margin-bottom:24px;">
+          ${['Unlimited AI Requests','AI Resume Analyzer','AI Interview Coach','AI Follow-Up Writer','Advanced Analytics','Priority Support'].map(f => `
+            <li style="display:flex; align-items:center; gap:8px; font-size:0.84rem; color:var(--color-text-secondary);">
+              <i class="fas fa-times-circle" style="color:#EF4444;"></i> ${f}
+            </li>
+          `).join('')}
+        </ul>
+        <p style="font-size:0.8rem; color:var(--color-text-secondary); margin-bottom:24px;">Your data will be preserved. You can re-subscribe at any time.</p>
+        <div style="display:flex; gap:12px;">
+          <button id="billing-cancel-confirm" class="btn" style="flex:1; background:#EF4444; color:#FFF; border:none; padding:12px; border-radius:8px; font-weight:700; cursor:pointer;">
+            Yes, Cancel Subscription
+          </button>
+          <button id="billing-cancel-dismiss" class="btn btn-outline" style="flex:1; padding:12px; font-weight:700;">
+            Keep My Plan
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ── Tab switching ────────────────────────────────────
+  const tabs = [
+    { btn: 'btab-overview',  panel: 'billing-panel-overview' },
+    { btn: 'btab-usage',     panel: 'billing-panel-usage' },
+    { btn: 'btab-upgrade',   panel: 'billing-panel-upgrade' },
+    { btn: 'btab-history',   panel: 'billing-panel-history' },
+    { btn: 'btab-payment',   panel: 'billing-panel-payment' },
+  ];
+
+  tabs.forEach(({ btn, panel }) => {
+    document.getElementById(btn)?.addEventListener('click', () => {
+      tabs.forEach(t => {
+        document.getElementById(t.btn)?.classList.remove('active');
+        const p = document.getElementById(t.panel);
+        if (p) p.style.display = 'none';
+      });
+      document.getElementById(btn)?.classList.add('active');
+      const panelEl = document.getElementById(panel);
+      if (panelEl) panelEl.style.display = 'block';
+    });
+  });
+
+  // ── Upgrade CTA ──────────────────────────────────────
+  document.getElementById('billing-upgrade-cta')?.addEventListener('click', () => {
+    // Switch to Upgrade tab
+    document.getElementById('btab-upgrade')?.click();
+  });
+
+  document.getElementById('billing-upgrade-pro-btn')?.addEventListener('click', () => {
+    showToast('Redirecting to Stripe Checkout…', 'info');
+    // Future: window.location.href = await billing.createCheckoutSession('pro', 'monthly');
+  });
+
+  document.getElementById('billing-manage-btn')?.addEventListener('click', () => {
+    document.getElementById('btab-upgrade')?.click();
+  });
+
+  // ── Add card ─────────────────────────────────────────
+  document.getElementById('add-card-btn')?.addEventListener('click', () => {
+    showToast('Payment form powered by Stripe Elements — coming with live billing integration.', 'info');
+  });
+
+  // ── Cancel flow ──────────────────────────────────────
+  const modal = document.getElementById('billing-cancel-modal');
+
+  document.getElementById('billing-cancel-btn')?.addEventListener('click', () => {
+    if (modal) modal.style.display = 'flex';
+  });
+
+  document.getElementById('billing-pause-btn')?.addEventListener('click', () => {
+    showToast('Subscription paused. Your Pro access continues until the end of this billing period.', 'info');
+  });
+
+  document.getElementById('billing-cancel-dismiss')?.addEventListener('click', () => {
+    if (modal) modal.style.display = 'none';
+  });
+
+  document.getElementById('billing-cancel-confirm')?.addEventListener('click', () => {
+    if (modal) modal.style.display = 'none';
+    showToast('Subscription cancelled. You will retain Pro access until your billing period ends.', 'success');
+  });
+}
+
 function renderSettings() {
   const root = getAppViewRoot();
   
@@ -5188,6 +5378,9 @@ function renderSettings() {
         </button>
         <button class="settings-tab-btn" id="settings-tab-security">
           <i class="fas fa-lock"></i> Security & Tokens
+        </button>
+        <button class="settings-tab-btn" id="settings-tab-billing">
+          <i class="fas fa-credit-card"></i> Billing & Subscription
         </button>
       </div>
 
@@ -5297,6 +5490,9 @@ function renderSettings() {
   });
   document.getElementById('settings-tab-security')?.addEventListener('click', () => {
     showToast('Advanced Security settings are coming in Milestone 3', 'info');
+  });
+  document.getElementById('settings-tab-billing')?.addEventListener('click', () => {
+    navigate('#/billing');
   });
 
   document.getElementById('settings-sync-btn')?.addEventListener('click', async () => {
@@ -5707,6 +5903,7 @@ const routes = {
   '#/follow-up': { render: renderFollowUp, authRequired: true, onboardingRequired: true },
   '#/interview-coach': { render: renderInterviewCoach, authRequired: true, onboardingRequired: true },
   '#/advisor': { render: renderJobAdvisor, authRequired: true, onboardingRequired: true },
+  '#/billing': { render: renderBilling, authRequired: true, onboardingRequired: true },
   '#/settings': { render: renderSettings, authRequired: true, onboardingRequired: true },
   '#/interviews': { render: renderInterviews, authRequired: true, onboardingRequired: true },
   '#/notifications': { render: renderNotifications, authRequired: true, onboardingRequired: true },

@@ -6533,6 +6533,62 @@ input:checked + .slider:before {
   text-decoration: underline;
 }
 
+/* =========================================================
+   BILLING PAGE COMPONENTS
+   ========================================================= */
+
+/* Usage progress item */
+.billing-usage-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.billing-usage-item:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Saved payment card row */
+.billing-card-row {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.billing-card-row:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* FAQ full-width override (applied on landing page) */
+.faq-grid--full {
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .faq-grid--full {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 580px) {
+  .faq-grid--full {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 
 
 
