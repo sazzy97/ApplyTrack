@@ -497,7 +497,49 @@ function getUserPlan() {
  */
 function hasFeatureAccess(featureKey) {
   const plan = getUserPlan();
-  return (PLAN_FEATURES[plan]?.features || []).includes(featureKey);
+  
+  // If user has the feature in their active plan tier, grant immediate access
+  if ((PLAN_FEATURES[plan]?.features || []).includes(featureKey)) {
+    return true;
+  }
+  
+  // 14-Day Free Trial for Free users to test Pro features
+  if (plan === 'free') {
+    const createdDateStr = currentProfile?.created_at || currentUser?.created_at;
+    let createdTime = Date.now();
+    
+    if (createdDateStr) {
+      createdTime = new Date(createdDateStr).getTime();
+    } else {
+      // Initialize created_at timestamp in profile if missing (fallback for dev testing)
+      if (currentProfile) {
+        currentProfile.created_at = new Date().toISOString();
+        if (window.USE_MOCK_AUTH) {
+          const sessionStr = localStorage.getItem('applytrack_session');
+          if (sessionStr) {
+            try {
+              const session = JSON.parse(sessionStr);
+              session.profile.created_at = currentProfile.created_at;
+              localStorage.setItem('applytrack_session', JSON.stringify(session));
+            } catch (_) {}
+          }
+        }
+      }
+    }
+    
+    const trialDuration = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
+    const timeElapsed = Date.now() - createdTime;
+    
+    if (timeElapsed < trialDuration) {
+      // If within trial, unlock all Pro features (excluding Team features)
+      const proFeatures = PLAN_FEATURES['pro'].features;
+      if (proFeatures.includes(featureKey)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
 }
 
 /**
@@ -770,6 +812,43 @@ function trackAIRequest() {
     incrementAIRequestsUsed();
   }
   return true;
+}
+
+/**
+ * Returns dynamic HTML for the Pro free trial progress banner.
+ */
+function getTrialBannerHTML() {
+  const plan = getUserPlan();
+  if (plan !== 'free') return '';
+
+  const createdDateStr = currentProfile?.created_at || currentUser?.created_at;
+  let createdTime = Date.now();
+  if (createdDateStr) {
+    createdTime = new Date(createdDateStr).getTime();
+  }
+  
+  const trialDuration = 14 * 24 * 60 * 60 * 1000; // 14 days in ms
+  const timeElapsed = Date.now() - createdTime;
+  const remaining = trialDuration - timeElapsed;
+  
+  if (remaining <= 0) return '';
+  
+  const daysLeft = Math.ceil(remaining / (24 * 60 * 60 * 1000));
+  
+  return `
+    <div class="sidebar-trial-banner">
+      <div style="font-size: 0.78rem; font-weight: 800; color: #FFF; display: flex; align-items: center; justify-content: space-between;">
+        <span><i class="fas fa-gift" style="color: #10B981; margin-right: 4px;"></i> Pro Free Trial</span>
+        <span class="active-badge">Active</span>
+      </div>
+      <div style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.85); margin-top: 4px;">
+        ${daysLeft} day${daysLeft > 1 ? 's' : ''} remaining in your trial.
+      </div>
+      <a href="#/billing" style="display: block; text-align: center; background: #FFF; color: var(--color-primary); font-size: 0.72rem; font-weight: 700; padding: 6px; border-radius: 6px; margin-top: 8px; text-decoration: none;">
+        Upgrade Now
+      </a>
+    </div>
+  `;
 }
 
 /**
@@ -6111,17 +6190,30 @@ function renderAppShell(currentHash) {
           <span class="logo-text">ApplyTrack</span>
         </a>
         <nav class="sidebar-nav">
+          <div class="sidebar-section-header">Core Features</div>
           <a href="#/dashboard" class="sidebar-link ${activeTab === 'dashboard' ? 'active' : ''}" id="sidebar-link-dashboard">
             <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
           </a>
+          <a href="#/interviews" class="sidebar-link ${activeTab === 'interviews' ? 'active' : ''}" id="sidebar-link-interviews">
+            <i class="fas fa-calendar-alt"></i> <span>Interviews</span>
+          </a>
+          <a href="#/notifications" class="sidebar-link ${activeTab === 'notifications' ? 'active' : ''}" id="sidebar-link-notifications" style="position:relative; display:flex; align-items:center;">
+            <i class="fas fa-bell"></i> <span>Notifications</span>
+            <span class="sidebar-badge" id="sidebar-unread-count" style="display:none;">0</span>
+          </a>
+          <a href="#/settings" class="sidebar-link ${activeTab === 'settings' ? 'active' : ''}" id="sidebar-link-settings">
+            <i class="fas fa-cog"></i> <span>Settings</span>
+          </a>
+          <a href="#/onboarding" class="sidebar-link ${activeTab === 'onboarding' ? 'active' : ''}" id="sidebar-link-onboarding">
+            <i class="fas fa-map-signs"></i> <span>Setup Guide</span>
+          </a>
+
+          <div class="sidebar-section-header">AI Pro Tools</div>
           <a href="#/insights" class="sidebar-link ${activeTab === 'insights' ? 'active' : ''}" id="sidebar-link-insights">
             <i class="fas fa-brain"></i> <span>AI Insights${!hasFeatureAccess('advanced_analytics') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
           <a href="#/advisor" class="sidebar-link ${activeTab === 'advisor' ? 'active' : ''}" id="sidebar-link-advisor">
             <i class="fas fa-chalkboard-teacher"></i> <span>AI Search Advisor${!hasFeatureAccess('ai_advisor') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
-          </a>
-          <a href="#/interviews" class="sidebar-link ${activeTab === 'interviews' ? 'active' : ''}" id="sidebar-link-interviews">
-            <i class="fas fa-calendar-alt"></i> <span>Interviews</span>
           </a>
           <a href="#/interview-coach" class="sidebar-link ${activeTab === 'interview-coach' ? 'active' : ''}" id="sidebar-link-interview-coach">
             <i class="fas fa-user-graduate"></i> <span>Interview Coach${!hasFeatureAccess('ai_interview_coach') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
@@ -6135,17 +6227,10 @@ function renderAppShell(currentHash) {
           <a href="#/follow-up" class="sidebar-link ${activeTab === 'follow-up' ? 'active' : ''}" id="sidebar-link-follow-up">
             <i class="fas fa-paper-plane"></i> <span>Follow-Up${!hasFeatureAccess('ai_follow_up') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
-          <a href="#/notifications" class="sidebar-link ${activeTab === 'notifications' ? 'active' : ''}" id="sidebar-link-notifications" style="position:relative; display:flex; align-items:center;">
-            <i class="fas fa-bell"></i> <span>Notifications</span>
-            <span class="sidebar-badge" id="sidebar-unread-count" style="display:none;">0</span>
-          </a>
-          <a href="#/settings" class="sidebar-link ${activeTab === 'settings' ? 'active' : ''}" id="sidebar-link-settings">
-            <i class="fas fa-cog"></i> <span>Settings</span>
-          </a>
-          <a href="#/onboarding" class="sidebar-link ${activeTab === 'onboarding' ? 'active' : ''}" id="sidebar-link-onboarding">
-            <i class="fas fa-map-signs"></i> <span>Setup Guide</span>
-          </a>
         </nav>
+        
+        <!-- Sidebar Free Trial Status -->
+        ${getTrialBannerHTML()}
         
         <!-- Sidebar AI Usage Meter -->
         ${getAISidebarMeterHTML(false)}
@@ -6174,14 +6259,23 @@ function renderAppShell(currentHash) {
             <button class="close-drawer-btn" id="close-drawer-btn"><i class="fas fa-times"></i></button>
           </div>
           <div class="mobile-drawer-body">
+            <div class="sidebar-section-header" style="color: var(--color-primary); padding-left: 0; margin-top: 0; margin-bottom: 8px;">Core Features</div>
+            <a href="#/dashboard" class="drawer-link" id="drawer-link-dashboard">
+              <i class="fas fa-chart-pie"></i> Dashboard
+            </a>
+            <a href="#/interviews" class="drawer-link" id="drawer-link-interviews">
+              <i class="fas fa-calendar-alt"></i> Interviews
+            </a>
+            <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
+              <i class="fas fa-map-signs"></i> Setup Guide
+            </a>
+            
+            <div class="sidebar-section-header" style="color: var(--color-primary); padding-left: 0; margin-top: 16px; margin-bottom: 8px;">AI Pro Tools</div>
             <a href="#/insights" class="drawer-link" id="drawer-link-insights">
               <i class="fas fa-brain"></i> AI Insights${!hasFeatureAccess('advanced_analytics') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
             <a href="#/advisor" class="drawer-link" id="drawer-link-advisor">
               <i class="fas fa-chalkboard-teacher"></i> AI Search Advisor${!hasFeatureAccess('ai_advisor') ? '<span class="nav-pro-lock">Pro</span>' : ''}
-            </a>
-            <a href="#/interviews" class="drawer-link" id="drawer-link-interviews">
-              <i class="fas fa-calendar-alt"></i> Interviews
             </a>
             <a href="#/interview-coach" class="drawer-link" id="drawer-link-interview-coach">
               <i class="fas fa-user-graduate"></i> Interview Coach${!hasFeatureAccess('ai_interview_coach') ? '<span class="nav-pro-lock">Pro</span>' : ''}
@@ -6195,9 +6289,9 @@ function renderAppShell(currentHash) {
             <a href="#/follow-up" class="drawer-link" id="drawer-link-follow-up">
               <i class="fas fa-paper-plane"></i> Follow-Up${!hasFeatureAccess('ai_follow_up') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
-            <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
-              <i class="fas fa-map-signs"></i> Setup Guide
-            </a>
+            
+            <!-- Drawer Free Trial Status -->
+            ${getTrialBannerHTML()}
             
             <!-- Drawer AI Usage Meter -->
             ${getAISidebarMeterHTML(true)}

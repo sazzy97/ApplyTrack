@@ -7098,6 +7098,43 @@ input:checked + .slider:before {
   gap: 4px;
 }
 
+/* =========================================================
+   SIDEBAR NAVIGATION SECTION HEADERS
+   ========================================================= */
+
+.sidebar-section-header {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748B; /* Very clean muted steel blue */
+  margin-top: 24px;
+  margin-bottom: 6px;
+  padding-left: 16px;
+}
+
+/* Free Trial banner inside sidebar */
+.sidebar-trial-banner {
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-secondary));
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.sidebar-trial-banner .active-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6EE7B7;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+
+
 
 
 
