@@ -5369,17 +5369,18 @@ async function renderResumeAnalyzer() {
             <div style="display: flex; flex-direction: column; gap: 24px;">
               
               <!-- Resume Upload Zone Card -->
+              <!-- Resume Upload Zone Card -->
               <div class="resume-history-card">
-                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 20px; display:flex; align-items:center; gap:8px;">
                   <i class="fas fa-file-upload" style="color: #2563EB;"></i> Upload Resume Version
                 </h3>
                 
-                <div class="form-group">
-                  <label for="analyzer-resume-name">Resume Version Name</label>
-                  <input type="text" id="analyzer-resume-name" placeholder="e.g. Product Designer CV - Stripe Version" style="width:100%;">
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="analyzer-resume-name">Resume Version Name</label>
+                  <input type="text" id="analyzer-resume-name" class="form-input" placeholder="e.g. Product Designer CV - Stripe Version">
                 </div>
 
-                <div class="resume-upload-zone" id="resume-drop-zone" style="border: 1px dashed #2563EB; border-radius: var(--radius-md); padding: 32px 24px; text-align: center; background-color: #F8FAFC; cursor: pointer; transition: all var(--transition-fast);">
+                <div class="resume-upload-zone" id="resume-drop-zone" style="border: 1px dashed #2563EB; border-radius: var(--radius-md); padding: 32px 24px; text-align: center; background-color: #F8FAFC; cursor: pointer; transition: all var(--transition-fast); margin-bottom: 20px;">
                   <div style="width: 48px; height: 48px; background-color: #FFFFFF; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: var(--shadow-sm); border: 1px solid var(--color-border);">
                     <i class="far fa-file-pdf" style="font-size: 1.4rem; color: #2563EB;"></i>
                   </div>
@@ -5393,22 +5394,22 @@ async function renderResumeAnalyzer() {
                   <button id="clear-selected-file" style="background:transparent; border:none; color:var(--color-text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
                 </div>
 
-                <button class="btn btn-primary" id="upload-resume-btn" style="width:100%; margin-top:16px; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:700;">
+                <button class="btn btn-primary" id="upload-resume-btn" style="width:100%; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:700;">
                   <span style="border: 1.5px solid white; border-radius: 50%; width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; margin-right: 4px;">+</span> Save Resume Version
                 </button>
               </div>
 
               <!-- Job Description Card -->
               <div class="resume-history-card">
-                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 20px; display:flex; align-items:center; gap:8px;">
                   <i class="fas fa-briefcase" style="color: #2563EB;"></i> Job Description
                 </h3>
 
                 <!-- Import dropdown selector -->
-                <div class="form-group">
-                  <label for="analyzer-job-select">Import from Saved Applications</label>
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="analyzer-job-select">Import from Saved Applications</label>
                   <div style="position:relative;">
-                    <select id="analyzer-job-select" style="width:100%; -webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px;">
+                    <select id="analyzer-job-select" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.9rem; background-color: #FFFFFF;">
                       <option value="">[Select an application to import...]</option>
                       ${jobs.map(j => `<option value="${j.id}" data-role="${j.role}" data-company="${j.company}">${j.company} - ${j.role}</option>`).join('')}
                     </select>
@@ -5416,16 +5417,16 @@ async function renderResumeAnalyzer() {
                   </div>
                 </div>
 
-                <div class="form-group">
-                  <label for="analyzer-job-desc">Paste Job Description Details</label>
-                  <textarea id="analyzer-job-desc" rows="6" placeholder="Paste the text of the job description here to analyze ATS match scores..." style="width:100%;"></textarea>
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="analyzer-job-desc">Paste Job Description Details</label>
+                  <textarea id="analyzer-job-desc" class="form-input" rows="6" placeholder="Paste the text of the job description here to analyze ATS match scores..." style="font-family: inherit; font-size: 0.9rem; resize: vertical; background-color: #FFFFFF;"></textarea>
                 </div>
 
                 <!-- Select Resume to Compare -->
-                <div class="form-group">
-                  <label for="analyzer-select-resume-version">Select Resume Version to Analyze</label>
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="analyzer-select-resume-version">Select Resume Version to Analyze</label>
                   <div style="position:relative;">
-                    <select id="analyzer-select-resume-version" style="width:100%; -webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px;">
+                    <select id="analyzer-select-resume-version" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.9rem; background-color: #FFFFFF;">
                       <option value="">[Choose a saved resume version...]</option>
                       ${resumes.map(r => `<option value="${r.id}">${r.name} (${r.file_name})</option>`).join('')}
                     </select>
@@ -5433,7 +5434,7 @@ async function renderResumeAnalyzer() {
                   </div>
                 </div>
 
-                <button class="btn" id="trigger-analysis-btn" style="width:100%; min-height:44px; margin-top:16px; display:flex; align-items:center; justify-content:center; gap:8px; background: transparent; border: 1.5px solid #2563EB; color: #2563EB; font-weight: 700; transition: all var(--transition-fast);">
+                <button class="btn" id="trigger-analysis-btn" style="width:100%; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; background: transparent; border: 1.5px solid #2563EB; color: #2563EB; font-weight: 700; transition: all var(--transition-fast);">
                   <i class="fas fa-tachometer-alt" style="font-size: 1rem;"></i> Run ATS AI Analysis
                 </button>
               </div>
