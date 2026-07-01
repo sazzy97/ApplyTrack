@@ -307,3 +307,36 @@ CREATE POLICY "Allow individual delete access to own resumes"
 
 -- Alter jobs table to link a resume version to each application
 ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS resume_id UUID REFERENCES public.resumes(id) ON DELETE SET NULL;
+
+-- ==========================================================================
+-- MILESTONE 12: AI COVER LETTER GENERATOR
+-- ==========================================================================
+
+-- Create cover_letters table to store multiple versions
+CREATE TABLE IF NOT EXISTS public.cover_letters (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  job_id UUID REFERENCES public.jobs ON DELETE CASCADE,
+  resume_id UUID REFERENCES public.resumes(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  tone TEXT NOT NULL CHECK (tone IN ('Professional', 'Friendly', 'Confident', 'Formal')),
+  hiring_manager TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS) on cover_letters
+ALTER TABLE public.cover_letters ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for cover_letters access
+CREATE POLICY "Allow individual read access to own cover letters"
+  ON public.cover_letters FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual insert access to own cover letters"
+  ON public.cover_letters FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual delete access to own cover letters"
+  ON public.cover_letters FOR DELETE
+  USING (auth.uid() = user_id);

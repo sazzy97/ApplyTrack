@@ -2286,6 +2286,91 @@ function getResumes() {
   return JSON.parse(resumes);
 }
 
+async function fetchCoverLetters() {
+  if (window.USE_MOCK_AUTH) {
+    return getCoverLetters();
+  } else {
+    const { data, error } = await supabaseClient
+      .from('cover_letters')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function saveCoverLetter(jobId, resumeId, title, content, tone, hiringManager) {
+  if (window.USE_MOCK_AUTH) {
+    let letters = getCoverLetters();
+    const newLetter = {
+      id: 'cl_' + Date.now(),
+      job_id: jobId || null,
+      resume_id: resumeId || null,
+      title,
+      content,
+      tone,
+      hiring_manager: hiringManager || null,
+      created_at: new Date().toISOString()
+    };
+    letters.unshift(newLetter);
+    localStorage.setItem('applytrack_cover_letters', JSON.stringify(letters));
+    return newLetter;
+  } else {
+    const { data, error } = await supabaseClient
+      .from('cover_letters')
+      .insert({
+        user_id: currentUser.id,
+        job_id: jobId || null,
+        resume_id: resumeId || null,
+        title,
+        content,
+        tone,
+        hiring_manager: hiringManager || null
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function deleteCoverLetter(id) {
+  if (window.USE_MOCK_AUTH) {
+    let letters = getCoverLetters();
+    letters = letters.filter(l => String(l.id) !== String(id));
+    localStorage.setItem('applytrack_cover_letters', JSON.stringify(letters));
+    return true;
+  } else {
+    const { error } = await supabaseClient
+      .from('cover_letters')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  }
+}
+
+function getCoverLetters() {
+  let letters = localStorage.getItem('applytrack_cover_letters');
+  if (!letters) {
+    const defaultLetters = [
+      {
+        id: 'cl_default_1',
+        job_id: '1',
+        resume_id: 'res_default_1',
+        title: 'Stripe Cover Letter - Product Designer',
+        tone: 'Professional',
+        hiring_manager: 'Sarah Jenkins',
+        content: `Dear Sarah Jenkins,\n\nI am writing to express my strong interest in the Product Designer position at Stripe. With over 4 years of experience building scalable design systems in Figma and optimizing checkout flows, I am excited about the opportunity to contribute to Stripe's developer-focused payment experiences.\n\nAt my previous role, I collaborated with UX engineering to build a unified components library that reduced design-to-dev handoff times by 30%. I also led accessibility reviews to bring our core SaaS workflows to WCAG 2.1 AA alignment. I look forward to bringing this user-centric design background to your product team.\n\nThank you for your time and consideration.\n\nSincerely,\nOsaze`,
+        created_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString()
+      }
+    ];
+    localStorage.setItem('applytrack_cover_letters', JSON.stringify(defaultLetters));
+    return defaultLetters;
+  }
+  return JSON.parse(letters);
+}
+
 async function updateJobStatus(jobId, oldStatus, newStatus) {
   if (window.USE_MOCK_AUTH) {
     let jobs = getJobs();
@@ -4510,7 +4595,7 @@ function getAppViewRoot() {
 
 function renderAppShell(currentHash) {
   const root = document.getElementById('app-root');
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : 'dashboard';
   
   root.innerHTML = `
     <div class="app-shell">
@@ -4543,6 +4628,9 @@ function renderAppShell(currentHash) {
           </a>
           <a href="#/resume-analyzer" class="sidebar-link ${activeTab === 'resume-analyzer' ? 'active' : ''}" id="sidebar-link-resume-analyzer">
             <i class="fas fa-file-invoice"></i> <span>Resume Analyzer</span>
+          </a>
+          <a href="#/cover-letter" class="sidebar-link ${activeTab === 'cover-letter' ? 'active' : ''}" id="sidebar-link-cover-letter">
+            <i class="fas fa-file-signature"></i> <span>Cover Letter</span>
           </a>
           <a href="#/notifications" class="sidebar-link ${activeTab === 'notifications' ? 'active' : ''}" id="sidebar-link-notifications" style="position:relative; display:flex; align-items:center;">
             <i class="fas fa-bell"></i> <span>Notifications</span>
@@ -4585,6 +4673,9 @@ function renderAppShell(currentHash) {
             </a>
             <a href="#/resume-analyzer" class="drawer-link" id="drawer-link-resume-analyzer">
               <i class="fas fa-file-invoice"></i> Resume Analyzer
+            </a>
+            <a href="#/cover-letter" class="drawer-link" id="drawer-link-cover-letter">
+              <i class="fas fa-file-signature"></i> Cover Letter
             </a>
             <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
               <i class="fas fa-map-signs"></i> Setup Guide
@@ -4673,13 +4764,17 @@ function renderAppShell(currentHash) {
   document.getElementById('drawer-link-resume-analyzer')?.addEventListener('click', () => {
     drawerOverlay?.classList.remove('open');
   });
+
+  document.getElementById('drawer-link-cover-letter')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
   
   // Initial count update
   updateMenuNotificationBadges();
 }
 
 function updateAppShellActiveLink(currentHash) {
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : 'dashboard';
   
   document.querySelectorAll('.sidebar-link, .bottom-nav-item').forEach(link => {
     link.classList.remove('active');
@@ -4703,6 +4798,7 @@ const routes = {
   '#/dashboard': { render: renderDashboard, authRequired: true, onboardingRequired: true },
   '#/insights': { render: renderInsights, authRequired: true, onboardingRequired: true },
   '#/resume-analyzer': { render: renderResumeAnalyzer, authRequired: true, onboardingRequired: true },
+  '#/cover-letter': { render: renderCoverLetter, authRequired: true, onboardingRequired: true },
   '#/settings': { render: renderSettings, authRequired: true, onboardingRequired: true },
   '#/interviews': { render: renderInterviews, authRequired: true, onboardingRequired: true },
   '#/notifications': { render: renderNotifications, authRequired: true, onboardingRequired: true },
@@ -5792,6 +5888,477 @@ async function renderResumeAnalyzer() {
   await loadAndRender();
 }
 
+// 6A-3. AI COVER LETTER GENERATOR PAGE
+async function renderCoverLetter() {
+  const root = getAppViewRoot();
+  
+  root.innerHTML = `
+    <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary);"></i>
+      <p style="color:var(--color-text-secondary); font-weight:500;">Loading Cover Letter Generator...</p>
+    </div>
+  `;
+
+  // Parse jobId query parameter from hash
+  const hashParts = window.location.hash.split('?');
+  const queryParams = new URLSearchParams(hashParts[1] || '');
+  const prefillJobId = queryParams.get('jobId');
+
+  async function loadAndRender() {
+    try {
+      const [jobs, resumes, coverLetters] = await Promise.all([
+        fetchJobs(),
+        fetchResumes(),
+        fetchCoverLetters()
+      ]);
+
+      // Filter cover letters for this specific job if prefilled, otherwise show all
+      const displayLetters = prefillJobId 
+        ? coverLetters.filter(cl => String(cl.job_id) === String(prefillJobId))
+        : coverLetters;
+
+      let selectedJob = null;
+      if (prefillJobId) {
+        selectedJob = jobs.find(j => String(j.id) === String(prefillJobId));
+      }
+
+      root.innerHTML = `
+        <div class="analyzer-page-container">
+          <!-- Page Header -->
+          <div style="margin-bottom: 28px;">
+            <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary);">AI Cover Letter Generator</h1>
+            <p style="color: var(--color-text-secondary); margin-top: 4px;">Generate high-converting, personalized cover letters tailored to your target roles.</p>
+          </div>
+
+          <div class="analyzer-grid">
+            <!-- Left Column: Inputs Form -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              
+              <div class="resume-history-card">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 20px; display:flex; align-items:center; gap:8px;">
+                  <i class="fas fa-cog" style="color: #2563EB;"></i> Generator Inputs
+                </h3>
+
+                <!-- Import dropdown selector -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="cl-job-select">Import Job Details from Saved Applications</label>
+                  <div style="position:relative;">
+                    <select id="cl-job-select" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.9rem; background-color: #FFFFFF;">
+                      <option value="">[Select an application to import...]</option>
+                      ${jobs.map(j => `<option value="${j.id}" ${prefillJobId && String(j.id) === String(prefillJobId) ? 'selected' : ''}>${j.company} - ${j.role}</option>`).join('')}
+                    </select>
+                    <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.8rem;"></i>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+                  <div class="form-group">
+                    <label class="form-label" for="cl-company-name">Company Name</label>
+                    <input type="text" id="cl-company-name" class="form-input" placeholder="e.g. Stripe" value="${selectedJob ? selectedJob.company : ''}">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="cl-job-title">Job Title</label>
+                    <input type="text" id="cl-job-title" class="form-input" placeholder="e.g. Product Designer" value="${selectedJob ? selectedJob.role : ''}">
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="cl-hiring-manager">Hiring Manager Name (Optional)</label>
+                  <input type="text" id="cl-hiring-manager" class="form-input" placeholder="e.g. Sarah Jenkins" value="${selectedJob ? (selectedJob.recruiter_name || '') : ''}">
+                </div>
+
+                <!-- Select Resume -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="cl-select-resume-version">Tailor to Resume Version</label>
+                  <div style="position:relative;">
+                    <select id="cl-select-resume-version" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.9rem; background-color: #FFFFFF;">
+                      <option value="">[Choose a saved resume version...]</option>
+                      ${resumes.map(r => `<option value="${r.id}">${r.name} (${r.file_name})</option>`).join('')}
+                    </select>
+                    <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.8rem;"></i>
+                  </div>
+                </div>
+
+                <!-- Tone Selector Pills -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label">Cover Letter Tone</label>
+                  <div class="tone-pills-container" id="cl-tone-container">
+                    <button class="tone-pill active" data-tone="Professional">Professional</button>
+                    <button class="tone-pill" data-tone="Friendly">Friendly</button>
+                    <button class="tone-pill" data-tone="Confident">Confident</button>
+                    <button class="tone-pill" data-tone="Formal">Formal</button>
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="cl-job-desc">Job Description</label>
+                  <textarea id="cl-job-desc" class="form-input" rows="5" placeholder="Paste the job description details here to help AI align skills and achievements..." style="font-family: inherit; font-size: 0.9rem; resize: vertical; background-color: #FFFFFF;">${selectedJob ? `Role: ${selectedJob.role}\nCompany: ${selectedJob.company}\nLocation: ${selectedJob.location || 'Remote'}` : ''}</textarea>
+                </div>
+
+                <button class="btn btn-primary" id="generate-cl-btn" style="width:100%; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:700;">
+                  <i class="fas fa-magic"></i> Generate Cover Letter
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Right Column: Rich Text Editor & History -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              
+              <!-- Cover Letter Editor (Hidden initially, shown after generate or edit selection) -->
+              <div class="resume-history-card" id="cl-editor-card" style="display: none; padding: 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                  <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); display:flex; align-items:center; gap:8px; margin:0;">
+                    <i class="fas fa-edit" style="color: #2563EB;"></i> Cover Letter Editor
+                  </h3>
+                  <input type="text" id="cl-letter-title" class="form-input" style="max-width:240px; padding:6px 12px; font-size:0.85rem; height:32px; min-height:32px !important;" placeholder="Document Title...">
+                </div>
+
+                <!-- Rich Text toolbar -->
+                <div class="editor-toolbar">
+                  <button class="editor-toolbar-btn" data-cmd="bold" title="Bold"><i class="fas fa-bold"></i></button>
+                  <button class="editor-toolbar-btn" data-cmd="italic" title="Italic"><i class="fas fa-italic"></i></button>
+                  <button class="editor-toolbar-btn" data-cmd="formatBlock" data-arg="h3" title="Header"><i class="fas fa-heading"></i></button>
+                  <button class="editor-toolbar-btn" data-cmd="insertUnorderedList" title="Bullet List"><i class="fas fa-list-ul"></i></button>
+                  <span style="width:1px; height:20px; background-color:var(--color-border); margin:0 8px;"></span>
+                  <button class="editor-toolbar-btn" id="cl-editor-clear" title="Clear text"><i class="fas fa-eraser"></i></button>
+                </div>
+
+                <!-- Content Area -->
+                <div class="editor-content-area" contenteditable="true" id="cl-editor-content">
+                  <!-- AI Output injected here -->
+                </div>
+
+                <!-- Editing panel action controls -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px;">
+                  <button class="btn btn-outline" id="cl-copy-btn" style="min-height:40px; font-size:0.85rem; font-weight:700; border-color:var(--color-border); color:var(--color-text); background:transparent; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="far fa-copy"></i> Copy Content
+                  </button>
+                  <button class="btn btn-outline" id="cl-pdf-btn" style="min-height:40px; font-size:0.85rem; font-weight:700; border-color:#EF4444; color:#EF4444; background:transparent; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="far fa-file-pdf"></i> Download PDF
+                  </button>
+                </div>
+                <button class="btn btn-primary" id="cl-save-btn" style="width:100%; min-height:40px; margin-top:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px;">
+                  <i class="far fa-save"></i> Save to Application & History
+                </button>
+              </div>
+
+              <!-- History list card -->
+              <div class="resume-history-card" style="padding: 24px;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                  <span><i class="fas fa-history" style="color: #2563EB; margin-right: 6px;"></i> Saved Cover Letters</span>
+                  <span class="badge-status" style="background-color: #2563EB; color: #FFFFFF; font-size: 0.68rem; font-weight: 800; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">
+                    ${displayLetters.length} Saved
+                  </span>
+                </h3>
+
+                <div class="cover-letter-history-list">
+                  ${displayLetters.length === 0 ? `
+                    <p style="color: var(--color-text-secondary); font-size: 0.88rem; font-style: italic; text-align:center; padding:24px 0;">No saved cover letters found. Generate one on the left!</p>
+                  ` : displayLetters.map(cl => {
+                    const linkedJob = jobs.find(j => String(j.id) === String(cl.job_id));
+                    const subtitle = linkedJob ? `${linkedJob.company} &bull; ${linkedJob.role}` : 'General / Tailored';
+                    return `
+                      <div class="cover-letter-item">
+                        <div>
+                          <strong style="font-size:0.9rem; color:var(--color-primary);">${cl.title}</strong>
+                          <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-top:2px;">
+                            ${subtitle} &bull; ${new Date(cl.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                          <button class="btn btn-outline btn-sm load-cl-btn" data-id="${cl.id}" style="padding:4px 8px; font-size:0.72rem; border-color:var(--color-secondary); color:var(--color-secondary); font-weight:700; background:transparent;">
+                            Edit
+                          </button>
+                          <button class="btn btn-outline btn-sm delete-cl-btn" data-id="${cl.id}" style="padding:4px 8px; font-size:0.72rem; border-color:var(--color-danger); color:var(--color-danger); background:transparent;">
+                            <i class="far fa-trash-alt"></i>
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      `;
+
+      attachPageListeners(jobs, resumes, coverLetters);
+
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = `
+        <div style="padding: 40px; text-align: center;">
+          <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 8px;">Failed to load cover letter details</h2>
+          <p style="color: var(--color-text-secondary); margin-bottom: 24px;">${err.message}</p>
+          <button onclick="window.location.reload();" class="btn btn-primary">Retry</button>
+        </div>
+      `;
+    }
+  }
+
+  let selectedTone = 'Professional';
+
+  function attachPageListeners(jobs, resumes, coverLetters) {
+    const pills = document.querySelectorAll('#cl-tone-container .tone-pill');
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        selectedTone = pill.getAttribute('data-tone');
+      });
+    });
+
+    const jobSelect = document.getElementById('cl-job-select');
+    jobSelect?.addEventListener('change', () => {
+      const id = jobSelect.value;
+      if (!id) return;
+
+      const job = jobs.find(j => String(j.id) === String(id));
+      if (job) {
+        document.getElementById('cl-company-name').value = job.company;
+        document.getElementById('cl-job-title').value = job.role;
+        document.getElementById('cl-hiring-manager').value = job.recruiter_name || '';
+        document.getElementById('cl-job-desc').value = `Role: ${job.role}\nCompany: ${job.company}\nLocation: ${job.location || 'Remote'}\nSalary: ${job.salary_range || 'N/A'}\n\nQualifications:\n- Experience with tools and frameworks.\n- Design and layout optimization.`;
+        showToast("Imported details from application!", "success");
+      }
+    });
+
+    const formatButtons = document.querySelectorAll('.editor-toolbar .editor-toolbar-btn[data-cmd]');
+    formatButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const cmd = btn.getAttribute('data-cmd');
+        const arg = btn.getAttribute('data-arg') || null;
+        document.execCommand(cmd, false, arg);
+      });
+    });
+
+    document.getElementById('cl-editor-clear')?.addEventListener('click', () => {
+      const editor = document.getElementById('cl-editor-content');
+      if (editor && confirm("Clear all cover letter content?")) {
+        editor.innerHTML = '';
+      }
+    });
+
+    const generateBtn = document.getElementById('generate-cl-btn');
+    generateBtn?.addEventListener('click', () => {
+      const company = document.getElementById('cl-company-name')?.value.trim();
+      const title = document.getElementById('cl-job-title')?.value.trim();
+      const manager = document.getElementById('cl-hiring-manager')?.value.trim() || 'Hiring Team';
+      const resumeId = document.getElementById('cl-select-resume-version')?.value;
+      const jobDesc = document.getElementById('cl-job-desc')?.value.trim();
+
+      if (!company || !title) {
+        showToast("Please provide Company Name and Job Title", "error");
+        return;
+      }
+
+      if (!resumeId) {
+        showToast("Please select a resume version to tailor", "error");
+        return;
+      }
+
+      setButtonLoading(generateBtn, true, "Generating Cover Letter");
+
+      setTimeout(() => {
+        let salutation = `Dear ${manager},`;
+        let intro = '';
+        let skillsParagraph = '';
+        let achievementsParagraph = '';
+        let closing = '';
+
+        if (selectedTone === 'Friendly') {
+          intro = `<p>I was thrilled to see the opening for the ${title} position at ${company}! I've been following your company's growth, and I'd love to bring my energy and design-thinking skills to your awesome team.</p>`;
+          skillsParagraph = `<p>Tailoring my background, I specialize in building smooth customer experiences and high-fidelity prototypes. I enjoy collaborating across product and engineering to make sure we make things that are both fun to build and delighting to use.</p>`;
+          achievementsParagraph = `<p>In my recent projects, I helped redesign a dashboard layout that got a lot of praise from clients, leading to a nice boost in user satisfaction scores.</p>`;
+          closing = `<p>I'd love to chat more about this role and see how I can help. Thank you so much for reading!</p><p>Warmly,<br>${currentUser.email.split('@')[0]}</p>`;
+        } else if (selectedTone === 'Confident') {
+          intro = `<p>As a driven professional with a track record of optimization, I am writing to apply for the ${title} position at ${company}. I am confident that my experience matches your qualifications perfectly.</p>`;
+          skillsParagraph = `<p>My technical expertise includes advanced UI design architectures and usability compliance checks. I have a proven ability to lead product development, align layouts, and execute on tight timelines.</p>`;
+          achievementsParagraph = `<p>For example, at my last position, I designed a layout architecture that successfully reduced developer friction and decreased conversion drop-offs by 18%.</p>`;
+          closing = `<p>I am looking forward to discussing how my experience will help ${company} achieve its milestones. Thank you for your consideration.</p><p>Sincerely,<br>${currentUser.email.split('@')[0]}</p>`;
+        } else if (selectedTone === 'Formal') {
+          intro = `<p>I am writing to formally express my interest in the ${title} vacancy at ${company}, as advertised. Please accept this letter and the attached resume as my application for the post.</p>`;
+          skillsParagraph = `<p>With a comprehensive background in layout design and frontend specifications, I am well-versed in collaboration frameworks. I ensure all deliverables adhere to industry standards and client instructions.</p>`;
+          achievementsParagraph = `<p>My career highlights include managing project handoffs and delivering layouts that brought key SaaS portals to WCAG compliance.</p>`;
+          closing = `<p>I welcome the opportunity to discuss my qualifications with you in an interview. Thank you for your time.</p><p>Respectfully yours,<br>${currentUser.email.split('@')[0]}</p>`;
+        } else {
+          intro = `<p>I am writing to express my strong interest in the ${title} position at ${company}. With my background in layout optimizations and collaboration, I am eager to contribute to your engineering and design team.</p>`;
+          skillsParagraph = `<p>My experience aligns well with the requirements listed in your job description. I specialize in scalable design systems, building reusable component libraries, and establishing clear handoff pipelines.</p>`;
+          achievementsParagraph = `<p>During my previous tenure, I led the redesign of a checkout layout flow that improved onboarding conversion metrics by 15%.</p>`;
+          closing = `<p>I look forward to discussing how my background can support the goals of ${company}. Thank you for your time and consideration.</p><p>Best regards,<br>${currentUser.email.split('@')[0]}</p>`;
+        }
+
+        const editorCard = document.getElementById('cl-editor-card');
+        const editorContent = document.getElementById('cl-editor-content');
+        const titleInput = document.getElementById('cl-letter-title');
+
+        if (editorCard && editorContent) {
+          editorCard.style.display = 'block';
+          if (titleInput) titleInput.value = `${company} Cover Letter - ${title}`;
+          editorContent.innerHTML = `
+            <p>${new Date().toLocaleDateString()}</p>
+            <p><strong>${salutation}</strong></p>
+            ${intro}
+            ${skillsParagraph}
+            ${achievementsParagraph}
+            ${closing}
+          `;
+          editorCard.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        setButtonLoading(generateBtn, false, "Generate Cover Letter");
+        showToast("Cover letter generated in tone: " + selectedTone, "success");
+      }, 1000);
+    });
+
+    document.getElementById('cl-copy-btn')?.addEventListener('click', () => {
+      const editor = document.getElementById('cl-editor-content');
+      if (editor) {
+        navigator.clipboard.writeText(editor.innerText);
+        showToast("Cover letter text copied to clipboard!", "success");
+      }
+    });
+
+    document.getElementById('cl-pdf-btn')?.addEventListener('click', () => {
+      const editor = document.getElementById('cl-editor-content');
+      const title = document.getElementById('cl-letter-title')?.value || 'Cover Letter';
+      if (!editor) return;
+
+      showToast("Generating PDF download...", "info");
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>${title}</title>
+              <style>
+                body {
+                  font-family: 'Inter', Helvetica, Arial, sans-serif;
+                  line-height: 1.6;
+                  padding: 40px;
+                  color: #333;
+                  max-width: 800px;
+                  margin: 0 auto;
+                }
+                p { margin-bottom: 16px; }
+              </style>
+            </head>
+            <body>
+              ${editor.innerHTML}
+              <script>
+                window.onload = function() {
+                  window.print();
+                };
+              </script>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
+    });
+
+    document.getElementById('cl-save-btn')?.addEventListener('click', async () => {
+      const editor = document.getElementById('cl-editor-content');
+      const titleInput = document.getElementById('cl-letter-title');
+      const title = titleInput ? titleInput.value.trim() : '';
+      const jobId = document.getElementById('cl-job-select')?.value || null;
+      const resumeId = document.getElementById('cl-select-resume-version')?.value || null;
+      const manager = document.getElementById('cl-hiring-manager')?.value.trim() || '';
+
+      if (!editor || !editor.innerText.trim()) {
+        showToast("Cover letter content cannot be empty", "error");
+        return;
+      }
+
+      if (!title) {
+        showToast("Please provide a title for this cover letter", "error");
+        return;
+      }
+
+      try {
+        const btn = document.getElementById('cl-save-btn');
+        setButtonLoading(btn, true, "Save to Application & History");
+
+        await saveCoverLetter(
+          jobId,
+          resumeId,
+          title,
+          editor.innerHTML,
+          selectedTone,
+          manager
+        );
+
+        showToast("Cover letter saved successfully!", "success");
+        loadAndRender();
+      } catch (err) {
+        showToast(err.message, 'error');
+        setButtonLoading(document.getElementById('cl-save-btn'), false, "Save to Application & History");
+      }
+    });
+
+    document.querySelectorAll('.delete-cl-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (confirm("Are you sure you want to delete this cover letter?")) {
+          try {
+            await deleteCoverLetter(id);
+            showToast("Cover letter deleted", "success");
+            loadAndRender();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        }
+      });
+    });
+
+    document.querySelectorAll('.load-cl-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const cl = coverLetters.find(l => String(l.id) === String(id));
+        if (cl) {
+          const editorCard = document.getElementById('cl-editor-card');
+          const editorContent = document.getElementById('cl-editor-content');
+          const titleInput = document.getElementById('cl-letter-title');
+
+          if (editorCard && editorContent) {
+            editorCard.style.display = 'block';
+            if (titleInput) titleInput.value = cl.title;
+            editorContent.innerHTML = cl.content;
+            
+            if (cl.job_id) {
+              const jobSelect = document.getElementById('cl-job-select');
+              if (jobSelect) jobSelect.value = cl.job_id;
+            }
+            if (cl.resume_id) {
+              const resumeSelect = document.getElementById('cl-select-resume-version');
+              if (resumeSelect) resumeSelect.value = cl.resume_id;
+            }
+            document.getElementById('cl-hiring-manager').value = cl.hiring_manager || '';
+            
+            const tonePill = document.querySelector(`#cl-tone-container .tone-pill[data-tone="${cl.tone}"]`);
+            if (tonePill) {
+              pills.forEach(p => p.classList.remove('active'));
+              tonePill.classList.add('active');
+              selectedTone = cl.tone;
+            }
+
+            editorCard.scrollIntoView({ behavior: 'smooth' });
+            showToast("Cover letter loaded into editor!", "info");
+          }
+        }
+      });
+    });
+
+  }
+
+  await loadAndRender();
+}
+
 // 6B. INTERVIEWS PAGE
 async function renderInterviews() {
   const root = getAppViewRoot();
@@ -6744,9 +7311,10 @@ async function renderApplicationDetail(jobId) {
 
   async function loadAndRender() {
     try {
-      const [{ job, notes, attachments, activities }, resumes] = await Promise.all([
+      const [{ job, notes, attachments, activities }, resumes, coverLetters] = await Promise.all([
         fetchJobDetails(jobId),
-        fetchResumes()
+        fetchResumes(),
+        fetchCoverLetters()
       ]);
 
       const initial = job.company ? job.company.charAt(0).toUpperCase() : 'A';
@@ -6888,6 +7456,38 @@ async function renderApplicationDetail(jobId) {
                     <i class="fas fa-cloud-upload-alt"></i> Upload PDF/Document
                   </button>
                   <input type="file" id="attachment-file-input" accept=".pdf,.doc,.docx,.txt,image/*">
+                </div>
+              </div>
+
+              <!-- Associated Cover Letters Section -->
+              <div class="detail-card">
+                <h3 class="detail-card-title" style="display:flex; justify-content:space-between; align-items:center; border-bottom: none; padding-bottom: 0; margin-bottom: 12px;">
+                  <span><i class="fas fa-file-signature" style="margin-right: 8px;"></i> Associated Cover Letters</span>
+                  <a href="#/cover-letter?jobId=${job.id}" class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-magic"></i> Generate Cover Letter
+                  </a>
+                </h3>
+                
+                <div class="cover-letter-history-list" style="margin-top: 16px;">
+                  ${(() => {
+                    const linkedLetters = coverLetters.filter(cl => String(cl.job_id) === String(job.id));
+                    if (linkedLetters.length === 0) {
+                      return `<p style="color: var(--color-text-secondary); font-size: 0.9rem; font-style: italic; margin: 0;">No cover letters created for this application yet. Generate one using the button above.</p>`;
+                    }
+                    return linkedLetters.map(cl => `
+                      <div class="cover-letter-item" style="margin-bottom:8px; padding:10px 14px; box-shadow: var(--shadow-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md); background-color: var(--color-surface); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                          <strong style="font-size:0.85rem; color:var(--color-primary);">${cl.title}</strong>
+                          <div style="font-size:0.7rem; color:var(--color-text-secondary); margin-top:2px;">
+                            Tone: ${cl.tone} &bull; Created: ${new Date(cl.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <a href="#/cover-letter?jobId=${job.id}" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:0.72rem; border-color:var(--color-secondary); color:var(--color-secondary); background:transparent; font-weight:700;">
+                          View / Edit
+                        </a>
+                      </div>
+                    `).join('');
+                  })()}
                 </div>
               </div>
 
