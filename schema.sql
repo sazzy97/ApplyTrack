@@ -434,3 +434,34 @@ CREATE POLICY "Allow individual insert access to own practice answers"
 CREATE POLICY "Allow individual delete access to own practice answers"
   ON public.practice_answers FOR DELETE
   USING (auth.uid() = user_id);
+
+-- ==========================================================================
+-- MILESTONE 15: AI JOB SEARCH ADVISOR
+-- ==========================================================================
+
+-- Create weekly_reports table to store advisor weekly statistics
+CREATE TABLE IF NOT EXISTS public.weekly_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  content JSONB NOT NULL,
+  goals JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS) on weekly_reports
+ALTER TABLE public.weekly_reports ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for weekly_reports access
+CREATE POLICY "Allow individual read access to own weekly reports"
+  ON public.weekly_reports FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual insert access to own weekly reports"
+  ON public.weekly_reports FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual delete access to own weekly reports"
+  ON public.weekly_reports FOR DELETE
+  USING (auth.uid() = user_id);

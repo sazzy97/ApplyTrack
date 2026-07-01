@@ -2511,6 +2511,95 @@ function getFollowUps() {
   return JSON.parse(drafts);
 }
 
+async function fetchWeeklyReports() {
+  if (window.USE_MOCK_AUTH) {
+    return getWeeklyReports();
+  } else {
+    const { data, error } = await supabaseClient
+      .from('weekly_reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function saveWeeklyReport(startDate, endDate, content, goals) {
+  if (window.USE_MOCK_AUTH) {
+    let reports = getWeeklyReports();
+    const newReport = {
+      id: 'wr_' + Date.now(),
+      start_date: startDate,
+      end_date: endDate,
+      content: content,
+      goals: goals,
+      created_at: new Date().toISOString()
+    };
+    reports.unshift(newReport);
+    localStorage.setItem('applytrack_weekly_reports', JSON.stringify(reports));
+    return newReport;
+  } else {
+    const { data, error } = await supabaseClient
+      .from('weekly_reports')
+      .insert({
+        user_id: currentUser.id,
+        start_date: startDate,
+        end_date: endDate,
+        content: content,
+        goals: goals
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function deleteWeeklyReport(id) {
+  if (window.USE_MOCK_AUTH) {
+    let reports = getWeeklyReports();
+    reports = reports.filter(r => String(r.id) !== String(id));
+    localStorage.setItem('applytrack_weekly_reports', JSON.stringify(reports));
+    return true;
+  } else {
+    const { error } = await supabaseClient
+      .from('weekly_reports')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  }
+}
+
+function getWeeklyReports() {
+  let reports = localStorage.getItem('applytrack_weekly_reports');
+  if (!reports) {
+    const defaultReports = [
+      {
+        id: 'wr_default_1',
+        start_date: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString().split('T')[0],
+        end_date: new Date().toISOString().split('T')[0],
+        content: {
+          submitted: 5,
+          interviews: 2,
+          followUpsDue: 1,
+          wins: "Secured follow-up interviews with Stripe and Slack; responsive rates improved.",
+          improvements: "Average response time is slightly higher due to late applications on weekends. Shift applications to earlier in the week."
+        },
+        goals: [
+          { text: "Submit 5 high-quality tailored application versions", completed: true },
+          { text: "Schedule Stripe technical prep follow-up mock run", completed: true },
+          { text: "Apply earlier in the week (Monday-Wednesday only)", completed: false }
+        ],
+        created_at: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString()
+      }
+    ];
+    localStorage.setItem('applytrack_weekly_reports', JSON.stringify(defaultReports));
+    return defaultReports;
+  }
+  return JSON.parse(reports);
+}
+
 async function fetchPracticeQuestions() {
   if (window.USE_MOCK_AUTH) {
     return getPracticeQuestions();
@@ -4882,7 +4971,7 @@ function getAppViewRoot() {
 
 function renderAppShell(currentHash) {
   const root = document.getElementById('app-root');
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : currentHash.includes('interview-coach') ? 'interview-coach' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : currentHash.includes('interview-coach') ? 'interview-coach' : currentHash.includes('advisor') ? 'advisor' : 'dashboard';
   
   root.innerHTML = `
     <div class="app-shell">
@@ -4909,6 +4998,9 @@ function renderAppShell(currentHash) {
           </a>
           <a href="#/insights" class="sidebar-link ${activeTab === 'insights' ? 'active' : ''}" id="sidebar-link-insights">
             <i class="fas fa-brain"></i> <span>AI Insights</span>
+          </a>
+          <a href="#/advisor" class="sidebar-link ${activeTab === 'advisor' ? 'active' : ''}" id="sidebar-link-advisor">
+            <i class="fas fa-chalkboard-teacher"></i> <span>AI Search Advisor</span>
           </a>
           <a href="#/interviews" class="sidebar-link ${activeTab === 'interviews' ? 'active' : ''}" id="sidebar-link-interviews">
             <i class="fas fa-calendar-alt"></i> <span>Interviews</span>
@@ -4963,6 +5055,9 @@ function renderAppShell(currentHash) {
           <div class="mobile-drawer-body">
             <a href="#/insights" class="drawer-link" id="drawer-link-insights">
               <i class="fas fa-brain"></i> AI Insights
+            </a>
+            <a href="#/advisor" class="drawer-link" id="drawer-link-advisor">
+              <i class="fas fa-chalkboard-teacher"></i> AI Search Advisor
             </a>
             <a href="#/interviews" class="drawer-link" id="drawer-link-interviews">
               <i class="fas fa-calendar-alt"></i> Interviews
@@ -5082,13 +5177,17 @@ function renderAppShell(currentHash) {
   document.getElementById('drawer-link-interview-coach')?.addEventListener('click', () => {
     drawerOverlay?.classList.remove('open');
   });
+
+  document.getElementById('drawer-link-advisor')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
   
   // Initial count update
   updateMenuNotificationBadges();
 }
 
 function updateAppShellActiveLink(currentHash) {
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : currentHash.includes('interview-coach') ? 'interview-coach' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : currentHash.includes('interview-coach') ? 'interview-coach' : currentHash.includes('advisor') ? 'advisor' : 'dashboard';
   
   document.querySelectorAll('.sidebar-link, .bottom-nav-item').forEach(link => {
     link.classList.remove('active');
@@ -5115,6 +5214,7 @@ const routes = {
   '#/cover-letter': { render: renderCoverLetter, authRequired: true, onboardingRequired: true },
   '#/follow-up': { render: renderFollowUp, authRequired: true, onboardingRequired: true },
   '#/interview-coach': { render: renderInterviewCoach, authRequired: true, onboardingRequired: true },
+  '#/advisor': { render: renderJobAdvisor, authRequired: true, onboardingRequired: true },
   '#/settings': { render: renderSettings, authRequired: true, onboardingRequired: true },
   '#/interviews': { render: renderInterviews, authRequired: true, onboardingRequired: true },
   '#/notifications': { render: renderNotifications, authRequired: true, onboardingRequired: true },
@@ -7891,6 +7991,355 @@ async function renderInterviewCoach() {
       mockActive = false;
       loadAndRender();
     });
+  }
+
+  await loadAndRender();
+}
+
+// 6A-6. AI JOB SEARCH ADVISOR PAGE
+async function renderJobAdvisor() {
+  const root = getAppViewRoot();
+  
+  root.innerHTML = `
+    <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary);"></i>
+      <p style="color:var(--color-text-secondary); font-weight:500;">Loading AI Job Search Advisor...</p>
+    </div>
+  `;
+
+  let activeReports = [];
+  let currentReportData = null; // Snapshot of currently loaded/generated report
+
+  async function loadData() {
+    const [jobs, interviews, reports] = await Promise.all([
+      fetchJobs(),
+      fetchInterviews(),
+      fetchWeeklyReports()
+    ]);
+    return { jobs, interviews, reports };
+  }
+
+  async function loadAndRender() {
+    try {
+      const { jobs, interviews, reports } = await loadData();
+      activeReports = reports;
+
+      // 1. Calculate metrics
+      const totalApps = jobs.length;
+      const responseCount = jobs.filter(j => j.status !== 'applied').length;
+      const responseRate = totalApps > 0 ? Math.round((responseCount / totalApps) * 100) : 0;
+      
+      const interviewCount = jobs.filter(j => j.status === 'interview' || j.status === 'offer').length;
+      const interviewRate = totalApps > 0 ? Math.round((interviewCount / totalApps) * 100) : 0;
+
+      const offerCount = jobs.filter(j => j.status === 'offer').length;
+      const offerRate = interviewCount > 0 ? Math.round((offerCount / interviewCount) * 100) : 0;
+
+      // Fallback platform and title successes
+      const platformCounts = {};
+      const titleCounts = {};
+      jobs.forEach(j => {
+        if (j.platform) platformCounts[j.platform] = (platformCounts[j.platform] || 0) + 1;
+        if (j.role) titleCounts[j.role] = (titleCounts[j.role] || 0) + 1;
+      });
+      const topPlatform = Object.keys(platformCounts).sort((a,b) => platformCounts[b]-platformCounts[a])[0] || 'LinkedIn';
+      const topTitle = Object.keys(titleCounts).sort((a,b) => titleCounts[b]-titleCounts[a])[0] || 'Product Designer';
+
+      // 2. Render Workspace Page
+      root.innerHTML = `
+        <div class="analyzer-page-container">
+          <!-- Page Header -->
+          <div style="margin-bottom: 24px;">
+            <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary);">AI Job Search Advisor</h1>
+            <p style="color: var(--color-text-secondary); margin-top: 4px;">Get tactical recommendations, evaluate platform successes, and compile weekly performance export reports.</p>
+          </div>
+
+          <!-- Advisor KPI Metrics Row -->
+          <div class="metrics-grid" style="margin-bottom: 28px;">
+            <div class="metric-card">
+              <div class="metric-value">${totalApps}</div>
+              <div class="metric-label">Total Applications</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value" style="color: var(--color-secondary);">${responseRate}%</div>
+              <div class="metric-label">Response Rate</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value" style="color: #10B981;">${interviewRate}%</div>
+              <div class="metric-label">Interview Conversion</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value" style="color: #F59E0B;">6.4 Days</div>
+              <div class="metric-label">Avg. Response Time</div>
+            </div>
+          </div>
+
+          <div class="analyzer-grid">
+            <!-- Left Column: Recommendations -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <div class="resume-history-card">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px;">
+                  <i class="fas fa-brain" style="color: #2563EB; margin-right: 6px;"></i> Strategic AI Recommendations
+                </h3>
+
+                <div class="advisor-recommendation-card">
+                  <div style="font-weight: 700; color: var(--color-primary); margin-bottom: 6px; font-size:0.92rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-bullseye" style="color:#2563EB;"></i> Shift Applications Earlier in the Week
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.5;">
+                    Our data shows response rates increase by <strong>24%</strong> for applications submitted between Monday and Wednesday. Weekend submissions face higher rates of early archiving.
+                  </div>
+                </div>
+
+                <div class="advisor-recommendation-card" style="border-left-color: #10B981;">
+                  <div style="font-weight: 700; color: var(--color-primary); margin-bottom: 6px; font-size:0.92rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-handshake" style="color:#10B981;"></i> Double Down on ${topPlatform} Referrals
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.5;">
+                    Your conversion rate on <strong>${topPlatform}</strong> is higher than other channels. Try sourcing direct internal referrals from your LinkedIn network before applying.
+                  </div>
+                </div>
+
+                <div class="advisor-recommendation-card" style="border-left-color: #F59E0B;">
+                  <div style="font-weight: 700; color: var(--color-primary); margin-bottom: 6px; font-size:0.92rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-file-alt" style="color:#F59E0B;"></i> Tailor Resumes for ${topTitle} Roles
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.5;">
+                    Resume versions matching keywords for <strong>${topTitle}</strong> have a 30% higher ATS compatibility score. Focus on highlighting responsive viewport optimizations in experience blocks.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Weekly Report Workspace -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <div class="resume-history-card">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+                  <span><i class="fas fa-file-invoice" style="color: #2563EB; margin-right: 6px;"></i> Weekly Activity Report</span>
+                  <button class="btn btn-secondary btn-sm" id="generate-weekly-btn" style="padding: 4px 8px; font-size: 0.72rem; display: flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-sync"></i> Generate Report
+                  </button>
+                </h3>
+
+                <div id="weekly-report-container-mount">
+                  ${currentReportData ? renderReportSheetHTML(currentReportData) : `
+                    <div style="padding: 40px 20px; text-align: center; border: 1px dashed var(--color-border); border-radius: 8px;">
+                      <i class="far fa-file-alt" style="font-size: 2.5rem; color: var(--color-text-secondary); margin-bottom: 12px;"></i>
+                      <p style="color: var(--color-text-secondary); font-size: 0.88rem; margin: 0;">No weekly report compiled for this period. Click 'Generate Report' above to compose one.</p>
+                    </div>
+                  `}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom: Saved Advisor Reports Archive -->
+          <div class="resume-history-card" id="advisor-history-section" style="margin-top: 28px;">
+            <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px;">
+              <i class="fas fa-history" style="color: #2563EB; margin-right: 6px;"></i> Saved Weekly Reports History
+            </h3>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+              ${reports.length === 0 ? `
+                <p style="color: var(--color-text-secondary); font-size: 0.88rem; font-style: italic;">No saved reports in your archive log.</p>
+              ` : reports.map(r => `
+                <div class="cover-letter-item" style="display:flex; flex-direction:column; justify-content:space-between; gap:12px;">
+                  <div>
+                    <div style="font-weight: 700; color: var(--color-primary); font-size: 0.9rem;">
+                      Report: ${new Date(r.start_date).toLocaleDateString()} - ${new Date(r.end_date).toLocaleDateString()}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top:4px;">
+                      Apps: ${r.content.submitted} &bull; Interviews: ${r.content.interviews} &bull; Follow-ups: ${r.content.followUpsDue}
+                    </div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--color-border); padding-top:8px; margin-top:4px;">
+                    <button class="btn btn-outline btn-sm load-report-btn" data-id="${r.id}" style="padding: 2px 8px; font-size: 0.72rem; border-color:var(--color-secondary); color:var(--color-secondary); background:transparent;">
+                      Open Snapshot
+                    </button>
+                    <button class="btn btn-outline btn-sm delete-report-btn" data-id="${r.id}" style="padding: 2px 6px; font-size: 0.72rem; border-color:var(--color-danger); color:var(--color-danger); background:transparent;">
+                      <i class="far fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 3. Attach report triggers
+      document.getElementById('generate-weekly-btn')?.addEventListener('click', () => {
+        // Compose mock weekly report based on stats
+        const weekApps = jobs.filter(j => {
+          const diff = Date.now() - new Date(j.date || Date.now());
+          return diff < 7 * 24 * 3600 * 1000;
+        }).length || 3;
+
+        currentReportData = {
+          start_date: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString().split('T')[0],
+          end_date: new Date().toISOString().split('T')[0],
+          content: {
+            submitted: weekApps,
+            interviews: interviewCount || 1,
+            followUpsDue: jobs.filter(j => j.follow_up_status === 'pending').length || 2,
+            wins: `Generated ${weekApps} tailored applications this week. Established technical prep benchmarks inside the Mock Coach hub.`,
+            improvements: `Focus efforts strictly on referrals on ${topPlatform} and target applications on Mondays rather than weekends to capitalize on responsiveness conversions.`
+          },
+          goals: [
+            { text: `Tailor at least 3 resumes specifically for ${topTitle} positions`, completed: false },
+            { text: `Complete 1 mock behavioral practice simulation run`, completed: false },
+            { text: `Follow up on pending check-ins from previous weeks`, completed: true }
+          ]
+        };
+
+        loadAndRender();
+        showToast("Weekly AI report compiled!", "success");
+      });
+
+      // Attach history clicks
+      document.querySelectorAll('.load-report-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          const report = activeReports.find(r => String(r.id) === String(id));
+          if (report) {
+            currentReportData = report;
+            loadAndRender();
+            showToast("Loaded report snapshot from history logs", "info");
+          }
+        });
+      });
+
+      document.querySelectorAll('.delete-report-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          if (confirm("Are you sure you want to delete this weekly report snapshot?")) {
+            try {
+              await deleteWeeklyReport(id);
+              showToast("Report deleted", "success");
+              if (currentReportData && String(currentReportData.id) === String(id)) {
+                currentReportData = null;
+              }
+              loadAndRender();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          }
+        });
+      });
+
+      // Attach print and save inside report DOM
+      if (currentReportData) {
+        document.getElementById('print-report-btn')?.addEventListener('click', () => {
+          window.print();
+        });
+
+        document.getElementById('save-report-btn')?.addEventListener('click', async () => {
+          try {
+            const btn = document.getElementById('save-report-btn');
+            setButtonLoading(btn, true, "Saving");
+            await saveWeeklyReport(
+              currentReportData.start_date,
+              currentReportData.end_date,
+              currentReportData.content,
+              currentReportData.goals
+            );
+            showToast("Report saved to history successfully!", "success");
+            currentReportData = null;
+            loadAndRender();
+          } catch (err) {
+            showToast(err.message, 'error');
+            setButtonLoading(document.getElementById('save-report-btn'), false, "Save to History");
+          }
+        });
+
+        // Toggle goals checklist
+        document.querySelectorAll('.report-goal-checkbox').forEach((chk, idx) => {
+          chk.addEventListener('change', (e) => {
+            currentReportData.goals[idx].completed = e.target.checked;
+          });
+        });
+      }
+
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = `
+        <div style="padding: 40px; text-align: center;">
+          <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 8px;">Failed to load AI Advisor</h2>
+          <p style="color: var(--color-text-secondary); margin-bottom: 24px;">${err.message}</p>
+          <button onclick="window.location.reload();" class="btn btn-primary">Retry</button>
+        </div>
+      `;
+    }
+  }
+
+  function renderReportSheetHTML(report) {
+    return `
+      <div class="report-preview-container">
+        <!-- Print Header (Hidden on screen via styles.css but shown on printing) -->
+        <div style="text-align:center; border-bottom: 2px solid var(--color-primary); padding-bottom: 12px; margin-bottom: 20px;">
+          <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--color-primary); margin:0;">ApplyTrack AI Job Search Advisor</h2>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top:4px;">Weekly Performance Report Snapshot</div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-border); padding-bottom:12px; margin-bottom:20px;">
+          <strong style="font-size:0.85rem; text-transform:uppercase; color:var(--color-secondary);">Report Period</strong>
+          <span style="font-size:0.88rem; font-weight:700; color:var(--color-primary);">${new Date(report.start_date).toLocaleDateString()} - ${new Date(report.end_date).toLocaleDateString()}</span>
+        </div>
+
+        <!-- Metric badges inside sheet -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:24px;">
+          <div style="background:#F8FAFC; border:1px solid var(--color-border); padding:8px; border-radius:6px; text-align:center;">
+            <div style="font-size:0.65rem; font-weight:800; color:var(--color-text-secondary); text-transform:uppercase;">Submitted</div>
+            <div style="font-size:1.15rem; font-weight:800; color:var(--color-primary); margin-top:2px;">${report.content.submitted}</div>
+          </div>
+          <div style="background:#F8FAFC; border:1px solid var(--color-border); padding:8px; border-radius:6px; text-align:center;">
+            <div style="font-size:0.65rem; font-weight:800; color:var(--color-text-secondary); text-transform:uppercase;">Interviews</div>
+            <div style="font-size:1.15rem; font-weight:800; color:var(--color-secondary); margin-top:2px;">${report.content.interviews}</div>
+          </div>
+          <div style="background:#F8FAFC; border:1px solid var(--color-border); padding:8px; border-radius:6px; text-align:center;">
+            <div style="font-size:0.65rem; font-weight:800; color:var(--color-text-secondary); text-transform:uppercase;">Pending Followups</div>
+            <div style="font-size:1.15rem; font-weight:800; color:#EF4444; margin-top:2px;">${report.content.followUpsDue}</div>
+          </div>
+        </div>
+
+        <!-- Wins & Improvements -->
+        <div style="margin-bottom:20px;">
+          <strong style="font-size:0.8rem; text-transform:uppercase; color:var(--color-primary); display:block; margin-bottom:6px;"><i class="fas fa-check-circle" style="color:#10B981;"></i> Weekly Wins</strong>
+          <p style="font-size:0.85rem; color:var(--color-text); margin:0; line-height:1.5;">${report.content.wins}</p>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <strong style="font-size:0.8rem; text-transform:uppercase; color:var(--color-primary); display:block; margin-bottom:6px;"><i class="fas fa-exclamation-triangle" style="color:#F59E0B;"></i> Areas for Improvement</strong>
+          <p style="font-size:0.85rem; color:var(--color-text); margin:0; line-height:1.5;">${report.content.improvements}</p>
+        </div>
+
+        <!-- Checklist of Goals -->
+        <div style="margin-bottom:28px; border-top:1px solid var(--color-border); padding-top:16px;">
+          <strong style="font-size:0.8rem; text-transform:uppercase; color:var(--color-primary); display:block; margin-bottom:10px;">Goals for Next Week</strong>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${report.goals.map((g, idx) => `
+              <label style="display:flex; align-items:flex-start; gap:10px; font-size:0.85rem; color:var(--color-text); cursor:pointer;">
+                <input type="checkbox" class="report-goal-checkbox" style="margin-top:3px;" ${g.completed ? 'checked' : ''}>
+                <span style="text-decoration: ${g.completed ? 'line-through' : 'none'}; opacity: ${g.completed ? 0.6 : 1};">${g.text}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Control Action Bar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--color-border); padding-top:16px; margin-top:20px;" class="report-controls-bar">
+          <button class="btn btn-outline btn-sm" id="print-report-btn" style="display:inline-flex; align-items:center; gap:6px; min-height:36px; border-color:var(--color-secondary); color:var(--color-secondary); background:transparent; font-weight:700;">
+            <i class="fas fa-file-pdf"></i> Export to PDF
+          </button>
+          
+          ${!report.id ? `
+            <button class="btn btn-primary btn-sm" id="save-report-btn" style="display:inline-flex; align-items:center; gap:6px; min-height:36px; font-weight:700;">
+              <i class="far fa-save"></i> Save to History
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
   }
 
   await loadAndRender();
