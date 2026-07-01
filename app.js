@@ -5849,6 +5849,18 @@ function renderBilling() {
     if (modal) modal.style.display = 'none';
     showToast('Subscription cancelled. You will retain Pro access until your billing period ends.', 'success');
   });
+
+  // ── Parse initial tab selection from hash query param ──
+  const queryParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  const activeTabParam = queryParams.get('tab') || 'overview';
+  
+  // Programmatically click active tab after render completes
+  setTimeout(() => {
+    const tabBtn = document.getElementById('btab-' + activeTabParam);
+    if (tabBtn) {
+      tabBtn.click();
+    }
+  }, 100);
 }
 
 function renderSettings() {
@@ -6189,6 +6201,10 @@ function renderAppShell(currentHash) {
           <span class="logo-icon">A</span>
           <span class="logo-text">ApplyTrack</span>
         </a>
+        
+        <!-- Sidebar Free Trial Status (Placed right below logo) -->
+        ${getTrialBannerHTML()}
+        
         <nav class="sidebar-nav">
           <div class="sidebar-section-header">Core Features</div>
           <a href="#/dashboard" class="sidebar-link ${activeTab === 'dashboard' ? 'active' : ''}" id="sidebar-link-dashboard">
@@ -6201,6 +6217,9 @@ function renderAppShell(currentHash) {
             <i class="fas fa-bell"></i> <span>Notifications</span>
             <span class="sidebar-badge" id="sidebar-unread-count" style="display:none;">0</span>
           </a>
+          <a href="#/billing" class="sidebar-link ${activeTab === 'billing' ? 'active' : ''}" id="sidebar-link-billing">
+            <i class="fas fa-credit-card"></i> <span>Billing &amp; Subscription</span>
+          </a>
           <a href="#/settings" class="sidebar-link ${activeTab === 'settings' ? 'active' : ''}" id="sidebar-link-settings">
             <i class="fas fa-cog"></i> <span>Settings</span>
           </a>
@@ -6209,12 +6228,23 @@ function renderAppShell(currentHash) {
           </a>
 
           <div class="sidebar-section-header">AI Pro Tools</div>
-          <a href="#/insights" class="sidebar-link ${activeTab === 'insights' ? 'active' : ''}" id="sidebar-link-insights">
-            <i class="fas fa-brain"></i> <span>AI Insights${!hasFeatureAccess('advanced_analytics') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
-          </a>
-          <a href="#/advisor" class="sidebar-link ${activeTab === 'advisor' ? 'active' : ''}" id="sidebar-link-advisor">
-            <i class="fas fa-chalkboard-teacher"></i> <span>AI Search Advisor${!hasFeatureAccess('ai_advisor') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
-          </a>
+          <!-- AI Advisor & Insights Dropdown -->
+          <div class="sidebar-dropdown-container">
+            <button class="sidebar-link sidebar-dropdown-toggle ${['insights', 'advisor'].includes(activeTab) ? 'active' : ''}" id="sidebar-ai-advisor-toggle">
+              <i class="fas fa-brain"></i>
+              <span>AI Advisor &amp; Insights</span>
+              <i class="fas fa-chevron-down dropdown-arrow" style="margin-left:auto; font-size:0.75rem; transition:transform 0.2s;"></i>
+            </button>
+            <div class="sidebar-dropdown-menu ${['insights', 'advisor'].includes(activeTab) ? 'open' : ''}" id="sidebar-ai-advisor-menu">
+              <a href="#/insights" class="sidebar-dropdown-link ${activeTab === 'insights' ? 'active' : ''}" id="sidebar-link-insights">
+                <i class="fas fa-chart-line" style="font-size:0.8rem; margin-right:4px;"></i> AI Insights${!hasFeatureAccess('advanced_analytics') ? '<span class="nav-pro-lock">Pro</span>' : ''}
+              </a>
+              <a href="#/advisor" class="sidebar-dropdown-link ${activeTab === 'advisor' ? 'active' : ''}" id="sidebar-link-advisor">
+                <i class="fas fa-chalkboard-teacher" style="font-size:0.8rem; margin-right:4px;"></i> AI Search Advisor${!hasFeatureAccess('ai_advisor') ? '<span class="nav-pro-lock">Pro</span>' : ''}
+              </a>
+            </div>
+          </div>
+          
           <a href="#/interview-coach" class="sidebar-link ${activeTab === 'interview-coach' ? 'active' : ''}" id="sidebar-link-interview-coach">
             <i class="fas fa-user-graduate"></i> <span>Interview Coach${!hasFeatureAccess('ai_interview_coach') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
@@ -6228,9 +6258,6 @@ function renderAppShell(currentHash) {
             <i class="fas fa-paper-plane"></i> <span>Follow-Up${!hasFeatureAccess('ai_follow_up') ? '<span class="nav-pro-lock">Pro</span>' : ''}</span>
           </a>
         </nav>
-        
-        <!-- Sidebar Free Trial Status -->
-        ${getTrialBannerHTML()}
         
         <!-- Sidebar AI Usage Meter -->
         ${getAISidebarMeterHTML(false)}
@@ -6258,25 +6285,46 @@ function renderAppShell(currentHash) {
             </div>
             <button class="close-drawer-btn" id="close-drawer-btn"><i class="fas fa-times"></i></button>
           </div>
-          <div class="mobile-drawer-body">
-            <div class="sidebar-section-header" style="color: var(--color-primary); padding-left: 0; margin-top: 0; margin-bottom: 8px;">Core Features</div>
+          <div class="mobile-drawer-body" style="overflow-y: auto;">
+            <!-- Mobile Free Trial Status (Placed right below header) -->
+            ${getTrialBannerHTML()}
+            
+            <div class="sidebar-section-header" style="color: var(--color-primary); padding-left: 0; margin-top: 10px; margin-bottom: 8px;">Core Features</div>
             <a href="#/dashboard" class="drawer-link" id="drawer-link-dashboard">
               <i class="fas fa-chart-pie"></i> Dashboard
             </a>
             <a href="#/interviews" class="drawer-link" id="drawer-link-interviews">
               <i class="fas fa-calendar-alt"></i> Interviews
             </a>
+            <a href="#/billing" class="drawer-link" id="drawer-link-billing">
+              <i class="fas fa-credit-card"></i> Billing &amp; Sub
+            </a>
+            <a href="#/settings" class="drawer-link" id="drawer-link-settings">
+              <i class="fas fa-cog"></i> Settings
+            </a>
             <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
               <i class="fas fa-map-signs"></i> Setup Guide
             </a>
             
             <div class="sidebar-section-header" style="color: var(--color-primary); padding-left: 0; margin-top: 16px; margin-bottom: 8px;">AI Pro Tools</div>
-            <a href="#/insights" class="drawer-link" id="drawer-link-insights">
-              <i class="fas fa-brain"></i> AI Insights${!hasFeatureAccess('advanced_analytics') ? '<span class="nav-pro-lock">Pro</span>' : ''}
-            </a>
-            <a href="#/advisor" class="drawer-link" id="drawer-link-advisor">
-              <i class="fas fa-chalkboard-teacher"></i> AI Search Advisor${!hasFeatureAccess('ai_advisor') ? '<span class="nav-pro-lock">Pro</span>' : ''}
-            </a>
+            
+            <!-- AI Advisor & Insights mobile Dropdown -->
+            <div class="sidebar-dropdown-container" style="width: 100%;">
+              <button class="drawer-link sidebar-dropdown-toggle ${['insights', 'advisor'].includes(activeTab) ? 'active' : ''}" id="drawer-ai-advisor-toggle" style="width:100%; border:none; background:transparent; text-align:left; display:flex; align-items:center;">
+                <i class="fas fa-brain"></i>
+                <span>AI Advisor &amp; Insights</span>
+                <i class="fas fa-chevron-down dropdown-arrow" style="margin-left:auto; font-size:0.75rem; transition:transform 0.2s;"></i>
+              </button>
+              <div class="sidebar-dropdown-menu ${['insights', 'advisor'].includes(activeTab) ? 'open' : ''}" id="drawer-ai-advisor-menu">
+                <a href="#/insights" class="drawer-dropdown-link drawer-link ${activeTab === 'insights' ? 'active' : ''}" id="drawer-link-insights" style="display:flex; align-items:center; gap:8px;">
+                  <i class="fas fa-chart-line" style="font-size:0.85rem;"></i> AI Insights${!hasFeatureAccess('advanced_analytics') ? '<span class="nav-pro-lock">Pro</span>' : ''}
+                </a>
+                <a href="#/advisor" class="drawer-dropdown-link drawer-link ${activeTab === 'advisor' ? 'active' : ''}" id="drawer-link-advisor" style="display:flex; align-items:center; gap:8px;">
+                  <i class="fas fa-chalkboard-teacher" style="font-size:0.85rem;"></i> AI Search Advisor${!hasFeatureAccess('ai_advisor') ? '<span class="nav-pro-lock">Pro</span>' : ''}
+                </a>
+              </div>
+            </div>
+            
             <a href="#/interview-coach" class="drawer-link" id="drawer-link-interview-coach">
               <i class="fas fa-user-graduate"></i> Interview Coach${!hasFeatureAccess('ai_interview_coach') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
@@ -6289,9 +6337,6 @@ function renderAppShell(currentHash) {
             <a href="#/follow-up" class="drawer-link" id="drawer-link-follow-up">
               <i class="fas fa-paper-plane"></i> Follow-Up${!hasFeatureAccess('ai_follow_up') ? '<span class="nav-pro-lock">Pro</span>' : ''}
             </a>
-            
-            <!-- Drawer Free Trial Status -->
-            ${getTrialBannerHTML()}
             
             <!-- Drawer AI Usage Meter -->
             ${getAISidebarMeterHTML(true)}
@@ -6349,6 +6394,28 @@ function renderAppShell(currentHash) {
     }
   };
   
+  // Toggle Dropdown menu for AI Advisor & Insights in desktop sidebar
+  document.getElementById('sidebar-ai-advisor-toggle')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const menu = document.getElementById('sidebar-ai-advisor-menu');
+    const toggle = document.getElementById('sidebar-ai-advisor-toggle');
+    if (menu && toggle) {
+      const isOpen = menu.classList.toggle('open');
+      toggle.classList.toggle('open', isOpen);
+    }
+  });
+
+  // Toggle Dropdown menu for AI Advisor & Insights in mobile drawer
+  document.getElementById('drawer-ai-advisor-toggle')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const menu = document.getElementById('drawer-ai-advisor-menu');
+    const toggle = document.getElementById('drawer-ai-advisor-toggle');
+    if (menu && toggle) {
+      const isOpen = menu.classList.toggle('open');
+      toggle.classList.toggle('open', isOpen);
+    }
+  });
+
   // Sidebar & Drawer triggers
   document.getElementById('sidebar-logout-btn')?.addEventListener('click', handleLogout);
   document.getElementById('drawer-logout-btn')?.addEventListener('click', handleLogout);
@@ -6367,6 +6434,18 @@ function renderAppShell(currentHash) {
     if (e.target === drawerOverlay) {
       drawerOverlay.classList.remove('open');
     }
+  });
+
+  document.getElementById('drawer-link-dashboard')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
+
+  document.getElementById('drawer-link-billing')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
+
+  document.getElementById('drawer-link-settings')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
   });
 
   document.getElementById('drawer-link-onboarding')?.addEventListener('click', () => {
@@ -6406,13 +6485,24 @@ function renderAppShell(currentHash) {
 }
 
 function updateAppShellActiveLink(currentHash) {
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : currentHash.includes('interview-coach') ? 'interview-coach' : currentHash.includes('advisor') ? 'advisor' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('billing') ? 'billing' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : currentHash.includes('interview-coach') ? 'interview-coach' : currentHash.includes('advisor') ? 'advisor' : 'dashboard';
   
-  document.querySelectorAll('.sidebar-link, .bottom-nav-item').forEach(link => {
+  document.querySelectorAll('.sidebar-link, .sidebar-dropdown-link, .drawer-link, .drawer-dropdown-link, .bottom-nav-item').forEach(link => {
     link.classList.remove('active');
   });
   
+  // Highlight toggle parent button if dropdown child is active
+  if (activeTab === 'insights' || activeTab === 'advisor') {
+    document.getElementById('sidebar-ai-advisor-toggle')?.classList.add('active');
+    document.getElementById('drawer-ai-advisor-toggle')?.classList.add('active');
+    
+    // Auto expand menu on page reload/direct entry
+    document.getElementById('sidebar-ai-advisor-menu')?.classList.add('open');
+    document.getElementById('drawer-ai-advisor-menu')?.classList.add('open');
+  }
+  
   document.getElementById(`sidebar-link-${activeTab}`)?.classList.add('active');
+  document.getElementById(`drawer-link-${activeTab}`)?.classList.add('active');
   document.getElementById(`bottom-link-${activeTab}`)?.classList.add('active');
 }
 
@@ -6466,8 +6556,8 @@ async function handleRouting() {
     updateNavigation();
     
     // Find routing rules
-    let routeKey = currentHash;
-    if (currentHash.startsWith('#/application/')) {
+    let routeKey = currentHash.split('?')[0];
+    if (routeKey.startsWith('#/application/')) {
       routeKey = '#/application/:id';
     }
     const route = routes[routeKey] || routes['#/']; // default back to landing page if path not found
