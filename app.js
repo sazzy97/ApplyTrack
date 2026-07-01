@@ -6613,6 +6613,12 @@ async function renderFollowUp() {
                   </div>
                 </div>
 
+                <!-- Custom Instructions / Details -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="fu-custom-context">Custom Instructions / Details (Optional)</label>
+                  <input type="text" id="fu-custom-context" class="form-input" placeholder="e.g. Mention that I can start immediately, or highlight design systems...">
+                </div>
+
                 <button class="btn btn-primary" id="generate-fu-btn" style="width:100%; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:700;">
                   <i class="fas fa-magic"></i> Generate Follow-Up
                 </button>
@@ -6763,6 +6769,7 @@ async function renderFollowUp() {
       const recruiter = document.getElementById('fu-recruiter')?.value.trim() || 'Hiring Team';
       const days = document.getElementById('fu-days-contact')?.value || '5';
       const scenario = document.getElementById('fu-scenario-select')?.value;
+      const customContext = document.getElementById('fu-custom-context')?.value.trim();
 
       const job = jobs.find(j => String(j.id) === String(jobId));
       const company = job ? job.company : 'Company';
@@ -6811,6 +6818,14 @@ async function renderFollowUp() {
         } else { // Offer negotiation introduction
           subject = `Discussion on offer details: ${title} - Osaze`;
           body = `Dear ${recruiter},\n\nThank you so much for extending the offer for the ${title} position at ${company}. I am incredibly excited about the opportunity to join the team.\n\nBefore signing, I would love to schedule a brief call to discuss a few details of the offer package, specifically around compensation and start dates.\n\nBest regards,\nOsaze`;
+        }
+        
+        if (customContext) {
+          const insertStr = `\n\nAdditionally, ${customContext}`;
+          body = body.replace("\n\nBest regards,", `${insertStr}\n\nBest regards,`);
+          body = body.replace("\n\nWarmly,", `${insertStr}\n\nWarmly,`);
+          body = body.replace("\n\nBest,", `${insertStr}\n\nBest,`);
+          body = body.replace("\n\nSincerely,", `${insertStr}\n\nSincerely,`);
         }
 
         const previewCard = document.getElementById('fu-preview-card');
