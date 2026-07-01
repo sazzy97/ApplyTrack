@@ -302,11 +302,51 @@ function showToast(message, type = 'info') {
   }, 4000);
 }
 
+function setupLandingNavigation() {
+  const hamburger = document.getElementById('landing-hamburger-btn');
+  const closeBtn = document.getElementById('close-landing-drawer-btn');
+  const overlay = document.getElementById('landing-drawer-overlay');
+  
+  if (hamburger && overlay) {
+    const newHamburger = hamburger.cloneNode(true);
+    hamburger.parentNode.replaceChild(newHamburger, hamburger);
+    
+    newHamburger.addEventListener('click', () => {
+      overlay.classList.add('open');
+    });
+  }
+  
+  if (closeBtn && overlay) {
+    const newClose = closeBtn.cloneNode(true);
+    closeBtn.parentNode.replaceChild(newClose, closeBtn);
+    
+    newClose.addEventListener('click', () => {
+      overlay.classList.remove('open');
+    });
+  }
+  
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('open');
+      }
+    });
+
+    overlay.querySelectorAll('.landing-drawer-item, .btn').forEach(el => {
+      el.addEventListener('click', () => {
+        overlay.classList.remove('open');
+      });
+    });
+  }
+}
+
 function updateNavigation() {
   const navActions = document.getElementById('nav-actions');
   const navLinks = document.getElementById('nav-links');
   
   if (!navActions) return;
+
+  setupLandingNavigation();
 
   if (currentUser) {
     // Authenticated links

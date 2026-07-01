@@ -4830,6 +4830,122 @@ input:checked + .slider:before {
 }
 
 /* Guest Navigation Bar Mobile Fixes */
+.landing-hamburger-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font-size: 1.4rem;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color var(--transition-fast);
+}
+
+.landing-hamburger-btn:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.landing-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.landing-drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.landing-drawer-content {
+  position: absolute;
+  top: 0;
+  right: -280px;
+  width: 280px;
+  height: 100%;
+  background-color: var(--color-surface);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-drawer-overlay.open .landing-drawer-content {
+  transform: translateX(-280px);
+}
+
+.landing-drawer-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+
+.landing-drawer-header .logo-icon {
+  width: 28px;
+  height: 28px;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 0.95rem;
+  margin-right: 8px;
+}
+
+.close-landing-drawer-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.close-landing-drawer-btn:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.landing-drawer-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-grow: 1;
+}
+
+.landing-drawer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.landing-drawer-item {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 @media (max-width: 767px) {
   #demo-banner-wrapper {
     position: fixed;
@@ -4853,21 +4969,24 @@ input:checked + .slider:before {
   }
 
   body.demo-mode-active .navbar {
-    top: 40px !important; /* height of demo banner */
+    top: 40px !important;
   }
 
-  /* Make sure guest hero content doesn't get covered by fixed headers */
   body.demo-mode-active #app-root {
-    padding-top: 110px !important; /* banner (40px) + navbar (70px) */
+    padding-top: 110px !important;
   }
   
   body:not(.demo-mode-active) #app-root {
-    padding-top: 70px !important; /* navbar (70px) */
+    padding-top: 70px !important;
   }
 
-  /* Hide guest navigation links (Features, Problem, FAQ) on mobile to avoid overlap */
-  .navbar-container .nav-links {
+  .navbar-container .nav-links,
+  .navbar-container .nav-actions {
     display: none !important;
+  }
+  
+  .landing-hamburger-btn {
+    display: flex !important;
   }
   
   .navbar-container {
@@ -4879,18 +4998,8 @@ input:checked + .slider:before {
   }
 
   .navbar-container .logo {
-    font-size: 1.2rem !important;
+    font-size: 1.25rem !important;
     gap: 8px !important;
-  }
-  
-  .navbar-container .nav-actions {
-    gap: 8px !important;
-  }
-
-  .navbar-container .nav-actions .btn {
-    padding: 8px 12px !important;
-    font-size: 0.8rem !important;
-    min-height: 36px !important;
   }
 }
 

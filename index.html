@@ -46,8 +46,38 @@
         <a href="#/login" class="btn btn-outline btn-sm">Log In</a>
         <a href="#/signup" class="btn btn-primary btn-sm">Get Started</a>
       </div>
+
+      <!-- Hamburger Button for Mobile -->
+      <button class="landing-hamburger-btn" id="landing-hamburger-btn">
+        <i class="fas fa-bars"></i>
+      </button>
     </div>
   </nav>
+
+  <!-- Guest Mobile Navigation Drawer -->
+  <div class="landing-drawer-overlay" id="landing-drawer-overlay">
+    <div class="landing-drawer-content">
+      <div class="landing-drawer-header">
+        <div>
+          <span class="logo-icon">A</span>
+          ApplyTrack
+        </div>
+        <button class="close-landing-drawer-btn" id="close-landing-drawer-btn"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="landing-drawer-body">
+        <div class="landing-drawer-links">
+          <a href="#/" class="drawer-link landing-drawer-item" data-target="features">Features</a>
+          <a href="#/" class="drawer-link landing-drawer-item" data-target="problem">Problem</a>
+          <a href="#/" class="drawer-link landing-drawer-item" data-target="faq">FAQ</a>
+        </div>
+        <div class="drawer-divider"></div>
+        <div class="landing-drawer-actions" style="display:flex; flex-direction:column; gap:12px;">
+          <a href="#/login" class="btn btn-outline" style="width:100%; min-height:44px;" id="landing-drawer-login-btn">Log In</a>
+          <a href="#/signup" class="btn btn-primary" style="width:100%; min-height:44px;" id="landing-drawer-signup-btn">Get Started</a>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- SPA Target Mount Node -->
   <main id="app-root">
