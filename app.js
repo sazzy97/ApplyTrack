@@ -610,6 +610,223 @@ function showAIQuotaToast() {
   );
 }
 
+/**
+ * Returns the HTML structure for the elegant upgrade modal overlay.
+ */
+function getElegantUpgradeModalHTML(featureKey) {
+  const meta = FEATURE_META[featureKey] || { name: featureKey, icon: 'fas fa-lock', requiredPlan: 'pro', description: 'Upgrade your plan to access this feature.' };
+  const planLabel = meta.requiredPlan === 'team' ? 'Team' : 'Pro';
+  
+  const benefits = meta.requiredPlan === 'team' ? [
+    'Collaborate in real-time with coaches & peers',
+    'Shared workspaces & template databases',
+    'Centralized organization analytics board',
+    'Dedicated support manager availability',
+  ] : [
+    'Unlock unlimited AI requests & analysis',
+    'ATS match scanning & keyword suggestions',
+    'Interactive STAR answer preparation feedback',
+    'Direct synchronization to Google Calendar',
+  ];
+
+  return `
+    <div class="elegant-upgrade-modal-backdrop">
+      <div class="elegant-upgrade-modal">
+        <!-- Close button (ghost: continues with Free plan by redirecting to dashboard) -->
+        <button class="eum-close-btn" id="upgrade-modal-free-btn" title="Continue with Free Plan">&times;</button>
+        
+        <!-- Header -->
+        <div class="eum-icon-circle">
+          <i class="${meta.icon}"></i>
+        </div>
+        <div class="eum-plan-badge">${planLabel} Feature</div>
+        <h2 class="eum-title">Unlock ${meta.name}</h2>
+        <p class="eum-desc">${meta.description}</p>
+        
+        <!-- Key benefits checklist -->
+        <ul class="eum-benefits-list">
+          ${benefits.map(b => `
+            <li class="eum-benefit-item">
+              <span class="eum-check-icon"><i class="fas fa-check"></i></span>
+              <span>${b}</span>
+            </li>
+          `).join('')}
+        </ul>
+        
+        <!-- Current vs Recommended plan visual indicator -->
+        <div class="eum-plan-comparison">
+          <div class="eum-plan-comp-pill">
+            <span class="eum-plan-comp-label">Current:</span>
+            <span class="eum-plan-comp-val">Free Plan</span>
+          </div>
+          <div class="eum-plan-comp-arrow">&rarr;</div>
+          <div class="eum-plan-comp-pill recommended">
+            <span class="eum-plan-comp-label">Recommended:</span>
+            <span class="eum-plan-comp-val">${planLabel} Plan</span>
+          </div>
+        </div>
+
+        <!-- Pricing tier card row -->
+        <div class="eum-pricing-row">
+          <div class="eum-pricing-tier">
+            <span class="eum-pricing-tier-name">Monthly Billing</span>
+            <span class="eum-pricing-tier-price">$12<span class="eum-pricing-tier-period">/mo</span></span>
+          </div>
+          <div class="eum-pricing-tier popular">
+            <span class="eum-pricing-tier-badge">Popular</span>
+            <span class="eum-pricing-tier-name">Yearly Billing</span>
+            <span class="eum-pricing-tier-price">$10<span class="eum-pricing-tier-period">/mo</span></span>
+            <span class="eum-pricing-tier-save">Save 20%</span>
+          </div>
+        </div>
+
+        <!-- Upgrade CTA & Free navigation buttons -->
+        <div class="eum-actions">
+          <a href="#/billing" class="btn btn-primary eum-upgrade-cta-btn">
+            <i class="fas fa-bolt"></i> Upgrade to ${planLabel}
+          </a>
+          <button id="upgrade-modal-free-btn-secondary" class="btn btn-outline eum-free-cta-btn">
+            Continue with Free Plan
+          </button>
+        </div>
+        
+        <!-- Security guarantee footer -->
+        <div class="eum-footer">
+          <i class="fas fa-lock"></i> Secured payment via Stripe. Swappable to Paystack &amp; Flutterwave.
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Returns a Proxy object around the app content root when accessing a restricted feature.
+ * Automatically wraps premium page layouts in a blurred div and places the upgrade modal overlay.
+ */
+function getGatedAppViewRoot(featureKey) {
+  const realRoot = getAppViewRoot();
+  
+  if (hasFeatureAccess(featureKey)) {
+    return realRoot;
+  }
+  
+  // Return proxy wrapper to intercept assignments to innerHTML
+  return new Proxy(realRoot, {
+    set(target, property, value) {
+      if (property === 'innerHTML') {
+        const wrappedHTML = `
+          <div style="position: relative; width: 100%; min-height: 560px;">
+            <!-- Premium Content (Blurred slightly, interactive controls disabled) -->
+            <div style="filter: blur(5.5px) grayscale(15%); opacity: 0.5; pointer-events: none; user-select: none; transition: filter 0.3s ease;">
+              ${value}
+            </div>
+            <!-- Elegant Upgrade Modal Overlay -->
+            ${getElegantUpgradeModalHTML(featureKey)}
+          </div>
+        `;
+        target.innerHTML = wrappedHTML;
+        
+        // Attach back-to-dashboard handlers to BOTH "Continue with Free" buttons
+        setTimeout(() => {
+          document.getElementById('upgrade-modal-free-btn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            navigate('#/dashboard');
+          });
+          document.getElementById('upgrade-modal-free-btn-secondary')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            navigate('#/dashboard');
+          });
+        }, 80);
+        return true;
+      }
+      target[property] = value;
+      return true;
+    },
+    get(target, property) {
+      const val = target[property];
+      if (typeof val === 'function') {
+        return val.bind(target);
+      }
+      return val;
+    }
+  });
+}
+
+/**
+ * Verifies active plan and AI requests quota before completing an AI-based request.
+ * Displays toast warnings and quota badges as needed.
+ */
+function trackAIRequest() {
+  const plan = getUserPlan();
+  
+  // Checks feature accessibility
+  // AI usage counts toward basic parsing / advisor triggers
+  if (plan === 'free') {
+    const used = getAIRequestsUsed();
+    if (used >= 25) {
+      showToast("You've reached your monthly AI limit. Upgrade to Pro for unlimited requests.", "error");
+      return false;
+    }
+    incrementAIRequestsUsed();
+  }
+  return true;
+}
+
+/**
+ * Returns dynamic HTML for the AI Usage meter inside the app sidebar & mobile drawer.
+ */
+function getAISidebarMeterHTML(isMobile = false) {
+  const plan = getUserPlan();
+  const used = getAIRequestsUsed();
+  const limit = PLAN_FEATURES[plan]?.aiRequestsPerMonth ?? 25;
+  const isFree = plan === 'free';
+  
+  if (!isFree) {
+    return `
+      <div class="sidebar-ai-meter" style="background: rgba(255, 255, 255, 0.05); padding: 14px; border-radius: 8px; margin: 16px ${isMobile ? '0' : '0 0 16px'}; border: 1px dashed rgba(255, 255, 255, 0.15);">
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; font-weight: 700; color: #FFF;">
+          <span><i class="fas fa-bolt" style="color: #F59E0B; margin-right: 4px;"></i> AI Requests</span>
+          <span style="text-transform: uppercase; background: linear-gradient(135deg, #10B981, #059669); color: #FFF; padding: 2px 8px; border-radius: 999px; font-size: 0.6rem;">Unlimited</span>
+        </div>
+      </div>
+    `;
+  }
+
+  const isLimitReached = used >= limit;
+  const pct = Math.min(100, Math.round((used / limit) * 100));
+  const barColor = isLimitReached ? '#EF4444' : pct >= 80 ? '#F59E0B' : '#3B82F6';
+
+  if (isLimitReached) {
+    return `
+      <div class="sidebar-ai-meter limit-reached" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); padding: 14px; border-radius: 8px; margin: 16px ${isMobile ? '0' : '0 0 16px'};">
+        <div style="font-size: 0.78rem; font-weight: 700; color: #FCA5A5; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; line-height: 1.3;">
+          <i class="fas fa-exclamation-circle" style="color: #EF4444; flex-shrink:0;"></i>
+          <span>You've reached your monthly AI limit.</span>
+        </div>
+        <div style="font-size: 0.74rem; color: rgba(255, 255, 255, 0.7); margin-bottom: 10px;">${used} / ${limit} requests used</div>
+        <a href="#/billing" class="btn btn-primary btn-xs" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px; font-size: 0.75rem; background: #EF4444; border-color: #EF4444; color: #FFF;">
+          <i class="fas fa-bolt"></i> Upgrade to Pro
+        </a>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="sidebar-ai-meter" style="background: rgba(255, 255, 255, 0.04); padding: 14px; border-radius: 8px; margin: 16px ${isMobile ? '0' : '0 0 16px'}; border: 1px solid rgba(255, 255, 255, 0.08);">
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; font-weight: 600; color: rgba(255, 255, 255, 0.7); margin-bottom: 6px;">
+        <span>AI Usage</span>
+        <span style="font-weight: 700; color: #FFF;">${used} / ${limit} Used</span>
+      </div>
+      <div style="height: 5px; background: rgba(255, 255, 255, 0.1); border-radius: 999px; overflow: hidden; margin-bottom: 6px;">
+        <div style="height: 100%; width: ${pct}%; background: ${barColor}; border-radius: 999px; transition: width 0.3s ease;"></div>
+      </div>
+      <div style="font-size: 0.7rem; color: rgba(255, 255, 255, 0.4); text-align: right;">
+        ${limit - used} requests remaining
+      </div>
+    </div>
+  `;
+}
+
 // 1. LANDING PAGE
 function renderLanding() {
 
@@ -5930,6 +6147,9 @@ function renderAppShell(currentHash) {
           </a>
         </nav>
         
+        <!-- Sidebar AI Usage Meter -->
+        ${getAISidebarMeterHTML(false)}
+        
         <div class="sidebar-footer">
           <div class="sidebar-user">
             <i class="far fa-user-circle"></i>
@@ -5978,6 +6198,10 @@ function renderAppShell(currentHash) {
             <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
               <i class="fas fa-map-signs"></i> Setup Guide
             </a>
+            
+            <!-- Drawer AI Usage Meter -->
+            ${getAISidebarMeterHTML(true)}
+            
             <div class="drawer-divider"></div>
             <div class="drawer-user-info">
               <i class="far fa-user-circle"></i>
@@ -6439,12 +6663,7 @@ function generateAIRecommendations(jobs, interviews, metrics) {
 }
 
 async function renderInsights() {
-  const root = getAppViewRoot();
-
-  if (!hasFeatureAccess('advanced_analytics')) {
-    root.innerHTML = getFeatureGateHTML('advanced_analytics');
-    return;
-  }
+  const root = getGatedAppViewRoot('advanced_analytics');
   
   // Show spinner loading state first
   root.innerHTML = `
@@ -6759,12 +6978,7 @@ async function renderInsights() {
 
 // 6A-2. AI RESUME ANALYZER PAGE
 async function renderResumeAnalyzer() {
-  const root = getAppViewRoot();
-
-  if (!hasFeatureAccess('ai_resume_analyzer')) {
-    root.innerHTML = getFeatureGateHTML('ai_resume_analyzer');
-    return;
-  }
+  const root = getGatedAppViewRoot('ai_resume_analyzer');
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
@@ -7075,6 +7289,7 @@ async function renderResumeAnalyzer() {
     // Trigger AI Analysis
     const runAnalysisBtn = document.getElementById('trigger-analysis-btn');
     runAnalysisBtn?.addEventListener('click', () => {
+      if (!trackAIRequest()) return;
       const jobDesc = document.getElementById('analyzer-job-desc')?.value.trim();
       const resumeId = document.getElementById('analyzer-select-resume-version')?.value;
 
@@ -7218,12 +7433,7 @@ async function renderResumeAnalyzer() {
 
 // 6A-3. AI COVER LETTER GENERATOR PAGE
 async function renderCoverLetter() {
-  const root = getAppViewRoot();
-
-  if (!hasFeatureAccess('ai_cover_letter')) {
-    root.innerHTML = getFeatureGateHTML('ai_cover_letter');
-    return;
-  }
+  const root = getGatedAppViewRoot('ai_cover_letter');
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
@@ -7478,6 +7688,7 @@ async function renderCoverLetter() {
 
     const generateBtn = document.getElementById('generate-cl-btn');
     generateBtn?.addEventListener('click', () => {
+      if (!trackAIRequest()) return;
       const company = document.getElementById('cl-company-name')?.value.trim();
       const title = document.getElementById('cl-job-title')?.value.trim();
       const manager = document.getElementById('cl-hiring-manager')?.value.trim() || 'Hiring Team';
@@ -7694,12 +7905,7 @@ async function renderCoverLetter() {
 
 // 6A-4. AI FOLLOW-UP ASSISTANT PAGE
 async function renderFollowUp() {
-  const root = getAppViewRoot();
-
-  if (!hasFeatureAccess('ai_follow_up')) {
-    root.innerHTML = getFeatureGateHTML('ai_follow_up');
-    return;
-  }
+  const root = getGatedAppViewRoot('ai_follow_up');
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
@@ -7948,6 +8154,7 @@ async function renderFollowUp() {
     // 3. Generate Follow-Up Email trigger
     const generateBtn = document.getElementById('generate-fu-btn');
     generateBtn?.addEventListener('click', () => {
+      if (!trackAIRequest()) return;
       const jobId = document.getElementById('fu-job-select')?.value;
       const recruiter = document.getElementById('fu-recruiter')?.value.trim() || 'Hiring Team';
       const days = document.getElementById('fu-days-contact')?.value || '5';
@@ -8201,12 +8408,7 @@ async function renderFollowUp() {
 
 // 6A-5. AI INTERVIEW COACH PAGE
 async function renderInterviewCoach() {
-  const root = getAppViewRoot();
-
-  if (!hasFeatureAccess('ai_interview_coach')) {
-    root.innerHTML = getFeatureGateHTML('ai_interview_coach');
-    return;
-  }
+  const root = getGatedAppViewRoot('ai_interview_coach');
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
@@ -8492,6 +8694,7 @@ async function renderInterviewCoach() {
 
     // 1. Generate Questions click
     document.getElementById('generate-coach-questions')?.addEventListener('click', async () => {
+      if (!trackAIRequest()) return;
       const type = document.getElementById('coach-prep-type').value;
       const category = document.getElementById('coach-prep-category').value;
       const btn = document.getElementById('generate-coach-questions');
@@ -8925,12 +9128,7 @@ async function renderInterviewCoach() {
 
 // 6A-6. AI JOB SEARCH ADVISOR PAGE
 async function renderJobAdvisor() {
-  const root = getAppViewRoot();
-
-  if (!hasFeatureAccess('ai_advisor')) {
-    root.innerHTML = getFeatureGateHTML('ai_advisor');
-    return;
-  }
+  const root = getGatedAppViewRoot('ai_advisor');
   
   root.innerHTML = `
     <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
@@ -9144,6 +9342,7 @@ async function renderJobAdvisor() {
 
       // 3. Attach report triggers
       document.getElementById('generate-weekly-btn')?.addEventListener('click', () => {
+        if (!trackAIRequest()) return;
         // Compose mock weekly report based on stats
         const weekApps = jobs.filter(j => {
           const diff = Date.now() - new Date(j.date || Date.now());
