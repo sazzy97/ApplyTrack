@@ -2371,6 +2371,146 @@ function getCoverLetters() {
   return JSON.parse(letters);
 }
 
+async function fetchFollowUps() {
+  if (window.USE_MOCK_AUTH) {
+    return getFollowUps();
+  } else {
+    const { data, error } = await supabaseClient
+      .from('follow_ups')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function saveFollowUp(jobId, scenario, subject, body, tone, daysSinceContact, suggestedSendDate, status = 'draft') {
+  if (window.USE_MOCK_AUTH) {
+    let drafts = getFollowUps();
+    const newDraft = {
+      id: 'fu_' + Date.now(),
+      job_id: jobId || null,
+      scenario,
+      subject,
+      body,
+      tone,
+      days_since_contact: daysSinceContact ? parseInt(daysSinceContact) : null,
+      suggested_send_date: suggestedSendDate || null,
+      status,
+      created_at: new Date().toISOString()
+    };
+    drafts.unshift(newDraft);
+    localStorage.setItem('applytrack_follow_ups', JSON.stringify(drafts));
+    return newDraft;
+  } else {
+    const { data, error } = await supabaseClient
+      .from('follow_ups')
+      .insert({
+        user_id: currentUser.id,
+        job_id: jobId || null,
+        scenario,
+        subject,
+        body,
+        tone,
+        days_since_contact: daysSinceContact ? parseInt(daysSinceContact) : null,
+        suggested_send_date: suggestedSendDate || null,
+        status
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+}
+
+async function deleteFollowUp(id) {
+  if (window.USE_MOCK_AUTH) {
+    let drafts = getFollowUps();
+    drafts = drafts.filter(d => String(d.id) !== String(id));
+    localStorage.setItem('applytrack_follow_ups', JSON.stringify(drafts));
+    return true;
+  } else {
+    const { error } = await supabaseClient
+      .from('follow_ups')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  }
+}
+
+async function sendFollowUpEmail(id) {
+  if (!currentProfile?.gmail_connected) {
+    throw new Error("Gmail is disconnected. Please connect Gmail in Settings first.");
+  }
+
+  if (window.USE_MOCK_AUTH) {
+    let drafts = getFollowUps();
+    const idx = drafts.findIndex(d => String(d.id) === String(id));
+    if (idx === -1) throw new Error("Draft not found");
+
+    drafts[idx].status = 'sent';
+    localStorage.setItem('applytrack_follow_ups', JSON.stringify(drafts));
+    
+    if (drafts[idx].job_id) {
+      let jobs = getJobs();
+      const jIdx = jobs.findIndex(j => String(j.id) === String(drafts[idx].job_id));
+      if (jIdx !== -1) {
+        jobs[jIdx].activities = jobs[jIdx].activities || [];
+        jobs[jIdx].activities.push({
+          id: 'act_' + Date.now(),
+          event_type: 'details_updated',
+          description: `Follow-up email sent via Gmail: "${drafts[idx].subject}"`,
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem('applytrack_jobs', JSON.stringify(jobs));
+      }
+    }
+    return drafts[idx];
+  } else {
+    const { data, error } = await supabaseClient
+      .from('follow_ups')
+      .update({ status: 'sent' })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    
+    if (data.job_id) {
+      await supabaseClient.from('job_activities').insert({
+        user_id: currentUser.id,
+        job_id: data.job_id,
+        activity_type: 'details_updated',
+        notes: `Follow-up email sent via Gmail: "${data.subject}"`
+      });
+    }
+    return data;
+  }
+}
+
+function getFollowUps() {
+  let drafts = localStorage.getItem('applytrack_follow_ups');
+  if (!drafts) {
+    const defaultDrafts = [
+      {
+        id: 'fu_default_1',
+        job_id: '1',
+        scenario: 'Thank-you email',
+        subject: 'Thank you for the Product Designer interview - Osaze',
+        tone: 'Warm',
+        days_since_contact: 1,
+        suggested_send_date: new Date(Date.now() + 1 * 24 * 3600 * 1000).toISOString().split('T')[0],
+        body: `Hi Sarah Jenkins,\n\nThank you so much for taking the time to speak with me yesterday about the Product Designer opening at Stripe. I really enjoyed learning more about your design systems scaling challenges and how you handle checkout flow updates.\n\nOur discussion confirmed my enthusiasm for the role. I am confident my experience building reusable components will help Stripe streamline its developer handoff pipelines.\n\nPlease let me know if you need any additional references or portfolio links in the meantime. I look forward to hearing about the next steps.\n\nBest regards,\nOsaze`,
+        status: 'draft',
+        created_at: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString()
+      }
+    ];
+    localStorage.setItem('applytrack_follow_ups', JSON.stringify(defaultDrafts));
+    return defaultDrafts;
+  }
+  return JSON.parse(drafts);
+}
+
 async function updateJobStatus(jobId, oldStatus, newStatus) {
   if (window.USE_MOCK_AUTH) {
     let jobs = getJobs();
@@ -4595,7 +4735,7 @@ function getAppViewRoot() {
 
 function renderAppShell(currentHash) {
   const root = document.getElementById('app-root');
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : 'dashboard';
   
   root.innerHTML = `
     <div class="app-shell">
@@ -4631,6 +4771,9 @@ function renderAppShell(currentHash) {
           </a>
           <a href="#/cover-letter" class="sidebar-link ${activeTab === 'cover-letter' ? 'active' : ''}" id="sidebar-link-cover-letter">
             <i class="fas fa-file-signature"></i> <span>Cover Letter</span>
+          </a>
+          <a href="#/follow-up" class="sidebar-link ${activeTab === 'follow-up' ? 'active' : ''}" id="sidebar-link-follow-up">
+            <i class="fas fa-paper-plane"></i> <span>Follow-Up</span>
           </a>
           <a href="#/notifications" class="sidebar-link ${activeTab === 'notifications' ? 'active' : ''}" id="sidebar-link-notifications" style="position:relative; display:flex; align-items:center;">
             <i class="fas fa-bell"></i> <span>Notifications</span>
@@ -4676,6 +4819,9 @@ function renderAppShell(currentHash) {
             </a>
             <a href="#/cover-letter" class="drawer-link" id="drawer-link-cover-letter">
               <i class="fas fa-file-signature"></i> Cover Letter
+            </a>
+            <a href="#/follow-up" class="drawer-link" id="drawer-link-follow-up">
+              <i class="fas fa-paper-plane"></i> Follow-Up
             </a>
             <a href="#/onboarding" class="drawer-link" id="drawer-link-onboarding">
               <i class="fas fa-map-signs"></i> Setup Guide
@@ -4769,12 +4915,20 @@ function renderAppShell(currentHash) {
     drawerOverlay?.classList.remove('open');
   });
   
+  document.getElementById('drawer-link-cover-letter')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
+
+  document.getElementById('drawer-link-follow-up')?.addEventListener('click', () => {
+    drawerOverlay?.classList.remove('open');
+  });
+  
   // Initial count update
   updateMenuNotificationBadges();
 }
 
 function updateAppShellActiveLink(currentHash) {
-  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : 'dashboard';
+  const activeTab = currentHash.includes('settings') ? 'settings' : currentHash.includes('onboarding') ? 'onboarding' : currentHash.includes('interviews') ? 'interviews' : currentHash.includes('notifications') ? 'notifications' : currentHash.includes('insights') ? 'insights' : currentHash.includes('resume-analyzer') ? 'resume-analyzer' : currentHash.includes('cover-letter') ? 'cover-letter' : currentHash.includes('follow-up') ? 'follow-up' : 'dashboard';
   
   document.querySelectorAll('.sidebar-link, .bottom-nav-item').forEach(link => {
     link.classList.remove('active');
@@ -4799,6 +4953,7 @@ const routes = {
   '#/insights': { render: renderInsights, authRequired: true, onboardingRequired: true },
   '#/resume-analyzer': { render: renderResumeAnalyzer, authRequired: true, onboardingRequired: true },
   '#/cover-letter': { render: renderCoverLetter, authRequired: true, onboardingRequired: true },
+  '#/follow-up': { render: renderFollowUp, authRequired: true, onboardingRequired: true },
   '#/settings': { render: renderSettings, authRequired: true, onboardingRequired: true },
   '#/interviews': { render: renderInterviews, authRequired: true, onboardingRequired: true },
   '#/notifications': { render: renderNotifications, authRequired: true, onboardingRequired: true },
@@ -6359,6 +6514,493 @@ async function renderCoverLetter() {
   await loadAndRender();
 }
 
+// 6A-4. AI FOLLOW-UP ASSISTANT PAGE
+async function renderFollowUp() {
+  const root = getAppViewRoot();
+  
+  root.innerHTML = `
+    <div style="display:flex; justify-content:center; align-items:center; min-height:400px; flex-direction:column; gap:16px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary);"></i>
+      <p style="color:var(--color-text-secondary); font-weight:500;">Loading Follow-Up Assistant...</p>
+    </div>
+  `;
+
+  // Parse jobId query parameter from hash
+  const hashParts = window.location.hash.split('?');
+  const queryParams = new URLSearchParams(hashParts[1] || '');
+  const prefillJobId = queryParams.get('jobId');
+
+  async function loadAndRender() {
+    try {
+      const [jobs, followUps] = await Promise.all([
+        fetchJobs(),
+        fetchFollowUps()
+      ]);
+
+      // Filter follow-up drafts for this job if prefilled, otherwise show all
+      const displayDrafts = prefillJobId
+        ? followUps.filter(fu => String(fu.job_id) === String(prefillJobId))
+        : followUps;
+
+      let selectedJob = null;
+      if (prefillJobId) {
+        selectedJob = jobs.find(j => String(j.id) === String(prefillJobId));
+      }
+
+      root.innerHTML = `
+        <div class="analyzer-page-container">
+          <!-- Page Header -->
+          <div style="margin-bottom: 28px;">
+            <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--color-primary);">AI Follow-Up Assistant</h1>
+            <p style="color: var(--color-text-secondary); margin-top: 4px;">Draft and send high-converting follow-up emails for any stage of your application process.</p>
+          </div>
+
+          <div class="analyzer-grid">
+            <!-- Left Column: Inputs Form -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              
+              <div class="resume-history-card">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 20px; display:flex; align-items:center; gap:8px;">
+                  <i class="fas fa-magic" style="color: #2563EB;"></i> Follow-Up Inputs
+                </h3>
+
+                <!-- Import dropdown selector -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="fu-job-select">Import Job Details from Saved Applications</label>
+                  <div style="position:relative;">
+                    <select id="fu-job-select" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.9rem; background-color: #FFFFFF;">
+                      <option value="">[Select an application to import...]</option>
+                      ${jobs.map(j => `<option value="${j.id}" ${prefillJobId && String(j.id) === String(prefillJobId) ? 'selected' : ''}>${j.company} - ${j.role}</option>`).join('')}
+                    </select>
+                    <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.8rem;"></i>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:16px; margin-bottom:20px;">
+                  <div class="form-group">
+                    <label class="form-label" for="fu-recruiter">Recruiter / Contact Name</label>
+                    <input type="text" id="fu-recruiter" class="form-input" placeholder="e.g. Sarah Jenkins" value="${selectedJob ? (selectedJob.recruiter_name || '') : ''}">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="fu-days-contact">Days Since Last Contact</label>
+                    <input type="number" id="fu-days-contact" class="form-input" min="0" placeholder="e.g. 7" value="5">
+                  </div>
+                </div>
+
+                <!-- Scenario Selection -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label" for="fu-scenario-select">Follow-Up Scenario</label>
+                  <div style="position:relative;">
+                    <select id="fu-scenario-select" class="form-input" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right:32px; font-family: inherit; font-size: 0.9rem; background-color: #FFFFFF;">
+                      <option value="No response after application">No response after application</option>
+                      <option value="After interview">After interview</option>
+                      <option value="Thank-you email">Thank-you email</option>
+                      <option value="Checking application status">Checking application status</option>
+                      <option value="Offer negotiation introduction">Offer negotiation introduction</option>
+                    </select>
+                    <i class="fas fa-chevron-down" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--color-text-secondary); pointer-events:none; font-size:0.8rem;"></i>
+                  </div>
+                </div>
+
+                <!-- Tone Selector Pills -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                  <label class="form-label">Email Tone</label>
+                  <div class="tone-pills-container" id="fu-tone-container">
+                    <button class="tone-pill active" data-tone="Professional">Professional</button>
+                    <button class="tone-pill" data-tone="Warm">Warm</button>
+                    <button class="tone-pill" data-tone="Confident">Confident</button>
+                    <button class="tone-pill" data-tone="Brief">Brief</button>
+                  </div>
+                </div>
+
+                <button class="btn btn-primary" id="generate-fu-btn" style="width:100%; min-height:44px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:700;">
+                  <i class="fas fa-magic"></i> Generate Follow-Up
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Right Column: Preview pane & History list -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              
+              <!-- Draft Preview Box (Hidden initially) -->
+              <div class="resume-history-card" id="fu-preview-card" style="display: none; padding: 24px;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
+                  <i class="fas fa-envelope-open-text" style="color: #2563EB;"></i> Email Draft Preview
+                </h3>
+
+                <div class="follow-up-preview-box">
+                  <div class="follow-up-preview-header">
+                    <div class="follow-up-preview-row">
+                      <strong>Subject:</strong>
+                      <input type="text" id="fu-draft-subject" class="form-input" style="height:32px; min-height:32px !important; padding:4px 8px; font-size:0.9rem;" placeholder="Email Subject line...">
+                    </div>
+                    <div class="follow-up-preview-row">
+                      <strong>Send Date:</strong>
+                      <input type="date" id="fu-draft-send-date" class="form-input" style="height:32px; min-height:32px !important; padding:4px 8px; font-size:0.9rem; max-width: 180px;">
+                    </div>
+                  </div>
+                  
+                  <textarea id="fu-draft-body" class="form-input" rows="10" style="padding: 12px; border:none; resize:vertical; font-family: inherit; font-size: 0.92rem; background:transparent; outline:none; line-height:1.6;" placeholder="Email Body details..."></textarea>
+                </div>
+
+                <!-- Action buttons -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px;">
+                  <button class="btn btn-outline" id="fu-copy-btn" style="min-height:40px; font-size:0.85rem; font-weight:700; border-color:var(--color-border); color:var(--color-text); background:transparent; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="far fa-copy"></i> Copy Email
+                  </button>
+                  <button class="btn btn-outline" id="fu-save-btn" style="min-height:40px; font-size:0.85rem; font-weight:700; border-color:var(--color-secondary); color:var(--color-secondary); background:transparent; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="far fa-save"></i> Save Draft
+                  </button>
+                </div>
+
+                <!-- Connect/Send button -->
+                <button class="btn btn-primary" id="fu-gmail-btn" style="width:100%; min-height:42px; margin-top:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; background-color: #EF4444; border-color: #EF4444;">
+                  <i class="fab fa-google"></i> Send via Connected Gmail
+                </button>
+              </div>
+
+              <!-- Drafts Logs -->
+              <div class="resume-history-card" style="padding: 24px;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                  <span><i class="fas fa-history" style="color: #2563EB; margin-right: 6px;"></i> Drafts History</span>
+                  <span class="badge-status" style="background-color: #2563EB; color: #FFFFFF; font-size: 0.68rem; font-weight: 800; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">
+                    ${displayDrafts.length} drafts
+                  </span>
+                </h3>
+
+                <div class="cover-letter-history-list">
+                  ${displayDrafts.length === 0 ? `
+                    <p style="color: var(--color-text-secondary); font-size: 0.88rem; font-style: italic; text-align:center; padding:24px 0;">No drafts found. Generate one on the left!</p>
+                  ` : displayDrafts.map(d => {
+                    const linkedJob = jobs.find(j => String(j.id) === String(d.job_id));
+                    const companyName = linkedJob ? linkedJob.company : 'General';
+                    const isSent = d.status === 'sent';
+                    return `
+                      <div class="cover-letter-item">
+                        <div>
+                          <div style="display:flex; align-items:center; gap:8px;">
+                            <strong style="font-size:0.9rem; color:var(--color-primary);">${companyName} &bull; ${d.scenario}</strong>
+                            <span class="badge-status ${isSent ? 'sent' : 'draft'}" style="font-size:0.6rem; padding: 2px 6px; text-transform:uppercase; border-radius:4px; font-weight:800;">
+                              ${d.status}
+                            </span>
+                          </div>
+                          <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-top:4px;">
+                            Subject: "${d.subject}" &bull; ${new Date(d.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div style="display:flex; gap:6px; flex-shrink:0;">
+                          <button class="btn btn-outline btn-sm load-fu-btn" data-id="${d.id}" style="padding:4px 8px; font-size:0.72rem; border-color:var(--color-secondary); color:var(--color-secondary); font-weight:700; background:transparent;">
+                            Open
+                          </button>
+                          <button class="btn btn-outline btn-sm delete-fu-btn" data-id="${d.id}" style="padding:4px 8px; font-size:0.72rem; border-color:var(--color-danger); color:var(--color-danger); background:transparent;">
+                            <i class="far fa-trash-alt"></i>
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      `;
+
+      attachPageListeners(jobs, followUps);
+
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = `
+        <div style="padding: 40px; text-align: center;">
+          <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 8px;">Failed to load follow-up assistant</h2>
+          <p style="color: var(--color-text-secondary); margin-bottom: 24px;">${err.message}</p>
+          <button onclick="window.location.reload();" class="btn btn-primary">Retry</button>
+        </div>
+      `;
+    }
+  }
+
+  let selectedTone = 'Professional';
+  let activeDraftId = null; // Stores draft ID if editing/opened
+
+  function attachPageListeners(jobs, followUps) {
+    // 1. Tone selection pills toggle
+    const pills = document.querySelectorAll('#fu-tone-container .tone-pill');
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        selectedTone = pill.getAttribute('data-tone');
+      });
+    });
+
+    // 2. Select saved application to auto-fill recruiter fields
+    const jobSelect = document.getElementById('fu-job-select');
+    jobSelect?.addEventListener('change', () => {
+      const id = jobSelect.value;
+      if (!id) return;
+
+      const job = jobs.find(j => String(j.id) === String(id));
+      if (job) {
+        document.getElementById('fu-recruiter').value = job.recruiter_name || '';
+        // Set Days Since Contact based on date applied
+        if (job.date) {
+          const appliedDate = new Date(job.date);
+          const diffTime = Math.abs(new Date() - appliedDate);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          document.getElementById('fu-days-contact').value = diffDays || 5;
+        }
+        showToast("Imported details from application!", "success");
+      }
+    });
+
+    // 3. Generate Follow-Up Email trigger
+    const generateBtn = document.getElementById('generate-fu-btn');
+    generateBtn?.addEventListener('click', () => {
+      const jobId = document.getElementById('fu-job-select')?.value;
+      const recruiter = document.getElementById('fu-recruiter')?.value.trim() || 'Hiring Team';
+      const days = document.getElementById('fu-days-contact')?.value || '5';
+      const scenario = document.getElementById('fu-scenario-select')?.value;
+
+      const job = jobs.find(j => String(j.id) === String(jobId));
+      const company = job ? job.company : 'Company';
+      const title = job ? job.role : 'Job Position';
+
+      setButtonLoading(generateBtn, true, "Generating Follow-Up");
+
+      setTimeout(() => {
+        let subject = '';
+        let body = '';
+        let suggestedSendDate = new Date();
+
+        // Calc suggested send date
+        suggestedSendDate.setDate(suggestedSendDate.getDate() + 2);
+        const suggestedDateString = suggestedSendDate.toISOString().split('T')[0];
+
+        // Format subject & body depending on scenario and tone
+        if (scenario === 'Thank-you email') {
+          subject = `Thank you for the ${title} interview - Osaze`;
+          if (selectedTone === 'Warm') {
+            body = `Hi ${recruiter},\n\nThank you so much for taking the time to speak with me about the ${title} role. I really enjoyed our conversation and learning about the product development path.\n\nPlease let me know if you need anything else from my side. Looking forward to staying in touch!\n\nWarmly,\nOsaze`;
+          } else if (selectedTone === 'Confident') {
+            body = `Hi ${recruiter},\n\nThank you for the interview today. I really appreciated our discussion on the ${title} requirements. My experience building layout components matches this profile perfectly, and I'm eager to get started.\n\nBest regards,\nOsaze`;
+          } else if (selectedTone === 'Brief') {
+            body = `Hi ${recruiter},\n\nThanks for your time today. I enjoyed learning more about the ${title} role and Stripe's team. I look forward to next steps.\n\nBest,\nOsaze`;
+          } else { // Professional
+            body = `Dear ${recruiter},\n\nThank you for taking the time to speak with me today regarding the ${title} opening at ${company}. I appreciated our discussion about the responsibilities and team structures.\n\nI remain highly interested in the role, and look forward to hearing from you. Please let me know if you need any additional files.\n\nSincerely,\nOsaze`;
+          }
+        } else if (scenario === 'No response after application') {
+          subject = `Following up on my application: ${title} - Osaze`;
+          if (selectedTone === 'Warm') {
+            body = `Hi ${recruiter},\n\nI hope you're having a great week!\n\nI applied for the ${title} position about ${days} days ago and wanted to quickly follow up. I'm really excited about ${company}'s work and would love to help you build great user interfaces.\n\nHope to hear from you soon!\n\nWarmly,\nOsaze`;
+          } else if (selectedTone === 'Confident') {
+            body = `Dear ${recruiter},\n\nI am writing to follow up on the ${title} application I submitted ${days} days ago. Given my strong background in layout conversions and Figma pipelines, I believe I can make an immediate impact on your checkout conversion rates.\n\nI welcome the opportunity to discuss my qualifications soon.\n\nBest regards,\nOsaze`;
+          } else if (selectedTone === 'Brief') {
+            body = `Hi ${recruiter},\n\nHope you are well. I'm following up on my application for the ${title} role submitted ${days} days ago. Let me know if you have any questions.\n\nThanks,\nOsaze`;
+          } else { // Professional
+            body = `Dear ${recruiter},\n\nI hope this email finds you well.\n\nI am writing to express my continued interest in the ${title} position at ${company}. I submitted my application ${days} days ago and wanted to verify if any additional materials are required from my side to complete the review process.\n\nThank you for your time.\n\nSincerely,\nOsaze`;
+          }
+        } else if (scenario === 'After interview') {
+          subject = `Interview follow-up: ${title} - Osaze`;
+          body = `Dear ${recruiter},\n\nI hope this email finds you well. I am following up on our interview for the ${title} position at ${company}.\n\nYou mentioned that next steps would be finalized around this time. Please let me know if there are any updates regarding my candidacy.\n\nBest regards,\nOsaze`;
+        } else if (scenario === 'Checking application status') {
+          subject = `Application status check: ${title} - Osaze`;
+          body = `Dear ${recruiter},\n\nI hope this email finds you well. I wanted to follow up and check on the status of my application for the ${title} position. Let me know if you need any references.\n\nBest regards,\nOsaze`;
+        } else { // Offer negotiation introduction
+          subject = `Discussion on offer details: ${title} - Osaze`;
+          body = `Dear ${recruiter},\n\nThank you so much for extending the offer for the ${title} position at ${company}. I am incredibly excited about the opportunity to join the team.\n\nBefore signing, I would love to schedule a brief call to discuss a few details of the offer package, specifically around compensation and start dates.\n\nBest regards,\nOsaze`;
+        }
+
+        const previewCard = document.getElementById('fu-preview-card');
+        const subjectInput = document.getElementById('fu-draft-subject');
+        const dateInput = document.getElementById('fu-draft-send-date');
+        const bodyTextarea = document.getElementById('fu-draft-body');
+
+        if (previewCard && subjectInput && dateInput && bodyTextarea) {
+          previewCard.style.display = 'block';
+          subjectInput.value = subject;
+          dateInput.value = suggestedDateString;
+          bodyTextarea.value = body;
+          activeDraftId = null; // New draft
+
+          previewCard.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        setButtonLoading(generateBtn, false, "Generate Follow-Up");
+        showToast("Follow-up draft generated!", "success");
+      }, 1000);
+    });
+
+    // 4. Copy Email contents
+    document.getElementById('fu-copy-btn')?.addEventListener('click', () => {
+      const subject = document.getElementById('fu-draft-subject')?.value || '';
+      const body = document.getElementById('fu-draft-body')?.value || '';
+      if (body) {
+        navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+        showToast("Email text copied to clipboard!", "success");
+      }
+    });
+
+    // 5. Save Draft to application
+    document.getElementById('fu-save-btn')?.addEventListener('click', async () => {
+      const subject = document.getElementById('fu-draft-subject')?.value.trim();
+      const body = document.getElementById('fu-draft-body')?.value.trim();
+      const date = document.getElementById('fu-draft-send-date')?.value;
+      const jobId = document.getElementById('fu-job-select')?.value || null;
+      const scenario = document.getElementById('fu-scenario-select')?.value;
+
+      if (!subject || !body) {
+        showToast("Email subject and body cannot be empty", "error");
+        return;
+      }
+
+      try {
+        const btn = document.getElementById('fu-save-btn');
+        setButtonLoading(btn, true, "Save Draft");
+
+        if (activeDraftId) {
+          // If we had an active draft loaded, we will delete and replace it, or overwrite it
+          await deleteFollowUp(activeDraftId);
+        }
+
+        await saveFollowUp(
+          jobId,
+          scenario,
+          subject,
+          body,
+          selectedTone,
+          document.getElementById('fu-days-contact')?.value || 5,
+          date,
+          'draft'
+        );
+
+        showToast("Follow-up draft saved!", "success");
+        loadAndRender();
+      } catch (err) {
+        showToast(err.message, 'error');
+        setButtonLoading(document.getElementById('fu-save-btn'), false, "Save Draft");
+      }
+    });
+
+    // 6. Send via Gmail (Checks connect, simulates sending)
+    document.getElementById('fu-gmail-btn')?.addEventListener('click', async () => {
+      // 1. Verify Gmail is connected
+      if (!currentProfile?.gmail_connected) {
+        showToast("Your Gmail is disconnected. Please connect it in Settings first.", "error");
+        // Open Settings Page
+        setTimeout(() => {
+          navigate('#/settings');
+        }, 1200);
+        return;
+      }
+
+      const subject = document.getElementById('fu-draft-subject')?.value.trim();
+      const body = document.getElementById('fu-draft-body')?.value.trim();
+      const date = document.getElementById('fu-draft-send-date')?.value;
+      const jobId = document.getElementById('fu-job-select')?.value || null;
+      const scenario = document.getElementById('fu-scenario-select')?.value;
+
+      if (!subject || !body) {
+        showToast("Email subject and body cannot be empty", "error");
+        return;
+      }
+
+      try {
+        const btn = document.getElementById('fu-gmail-btn');
+        setButtonLoading(btn, true, "Sending via Gmail...");
+
+        // Save draft first
+        let currentId = activeDraftId;
+        if (!currentId) {
+          const saved = await saveFollowUp(
+            jobId,
+            scenario,
+            subject,
+            body,
+            selectedTone,
+            document.getElementById('fu-days-contact')?.value || 5,
+            date,
+            'draft'
+          );
+          currentId = saved.id;
+        }
+
+        // Call sendFollowUpEmail
+        await sendFollowUpEmail(currentId);
+
+        showToast("Email sent successfully via connected Gmail!", "success");
+        loadAndRender();
+      } catch (err) {
+        showToast(err.message, 'error');
+        setButtonLoading(document.getElementById('fu-gmail-btn'), false, "Send via Connected Gmail");
+      }
+    });
+
+    // 7. Load Draft from history
+    document.querySelectorAll('.load-fu-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const draft = followUps.find(d => String(d.id) === String(id));
+        if (draft) {
+          const previewCard = document.getElementById('fu-preview-card');
+          const subjectInput = document.getElementById('fu-draft-subject');
+          const dateInput = document.getElementById('fu-draft-send-date');
+          const bodyTextarea = document.getElementById('fu-draft-body');
+
+          if (previewCard && subjectInput && dateInput && bodyTextarea) {
+            previewCard.style.display = 'block';
+            subjectInput.value = draft.subject;
+            dateInput.value = draft.suggested_send_date || '';
+            bodyTextarea.value = draft.body;
+            activeDraftId = draft.id;
+
+            // Load selectors
+            if (draft.job_id) {
+              const jobSelect = document.getElementById('fu-job-select');
+              if (jobSelect) jobSelect.value = draft.job_id;
+            }
+            const scenarioSelect = document.getElementById('fu-scenario-select');
+            if (scenarioSelect) scenarioSelect.value = draft.scenario;
+            document.getElementById('fu-days-contact').value = draft.days_since_contact || 5;
+
+            // Tone pills toggle
+            const tonePill = document.querySelector(`#fu-tone-container .tone-pill[data-tone="${draft.tone}"]`);
+            if (tonePill) {
+              pills.forEach(p => p.classList.remove('active'));
+              tonePill.classList.add('active');
+              selectedTone = draft.tone;
+            }
+
+            previewCard.scrollIntoView({ behavior: 'smooth' });
+            showToast("Follow-up draft loaded into preview!", "info");
+          }
+        }
+      });
+    });
+
+    // 8. Delete Draft
+    document.querySelectorAll('.delete-fu-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (confirm("Are you sure you want to delete this follow-up draft?")) {
+          try {
+            await deleteFollowUp(id);
+            showToast("Draft deleted", "success");
+            loadAndRender();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        }
+      });
+    });
+
+  }
+
+  await loadAndRender();
+}
+
 // 6B. INTERVIEWS PAGE
 async function renderInterviews() {
   const root = getAppViewRoot();
@@ -7311,10 +7953,11 @@ async function renderApplicationDetail(jobId) {
 
   async function loadAndRender() {
     try {
-      const [{ job, notes, attachments, activities }, resumes, coverLetters] = await Promise.all([
+      const [{ job, notes, attachments, activities }, resumes, coverLetters, followUps] = await Promise.all([
         fetchJobDetails(jobId),
         fetchResumes(),
-        fetchCoverLetters()
+        fetchCoverLetters(),
+        fetchFollowUps()
       ]);
 
       const initial = job.company ? job.company.charAt(0).toUpperCase() : 'A';
@@ -7699,9 +8342,41 @@ async function renderApplicationDetail(jobId) {
                     <label>Last Outreach Date</label>
                     <input type="date" id="detail-last-follow-up" class="detail-input" value="${job.last_follow_up ? job.last_follow_up.split('T')[0] : ''}">
                   </div>
-                  <button id="save-follow-up-btn" class="btn btn-primary btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                   <button id="save-follow-up-btn" class="btn btn-primary btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <i class="fas fa-save"></i> Save Follow-Up Plan
                   </button>
+
+                  <!-- AI Follow-up drafts section -->
+                  <div style="margin-top: 20px; border-top: 1px solid var(--color-border); padding-top: 16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                      <strong style="font-size:0.85rem; color:var(--color-primary);">AI Follow-Up Drafts</strong>
+                      <a href="#/follow-up?jobId=${job.id}" class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 0.72rem; display: flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-magic"></i> Draft Email
+                      </a>
+                    </div>
+                    
+                    <div class="follow-up-drafts-mini-list">
+                      ${(() => {
+                        const jobDrafts = followUps.filter(fu => String(fu.job_id) === String(job.id));
+                        if (jobDrafts.length === 0) {
+                          return `<p style="color: var(--color-text-secondary); font-size: 0.8rem; font-style: italic; margin: 0;">No follow-up drafts created. Generate one using the button above.</p>`;
+                        }
+                        return jobDrafts.map(d => `
+                          <div style="margin-bottom:8px; padding:8px 10px; border:1px solid var(--color-border); border-radius:6px; background-color:var(--color-surface); display:flex; justify-content:space-between; align-items:center; box-shadow: var(--shadow-sm);">
+                            <div style="min-width:0; flex-grow:1; margin-right:8px; text-align: left;">
+                              <div style="font-size:0.8rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--color-text);">${d.subject}</div>
+                              <div style="font-size:0.7rem; color:var(--color-text-secondary); margin-top:1px;">
+                                Scenario: ${d.scenario} &bull; <span class="badge-status ${d.status === 'sent' ? 'sent' : 'draft'}" style="font-size:0.58rem; padding: 1px 4px; border-radius:3px; font-weight:700; text-transform:uppercase;">${d.status}</span>
+                              </div>
+                            </div>
+                            <a href="#/follow-up?jobId=${job.id}" class="btn btn-outline btn-sm" style="padding:2px 6px; font-size:0.68rem; flex-shrink:0; border-color:var(--color-secondary); color:var(--color-secondary); background:transparent; font-weight:700;">
+                              Open
+                            </a>
+                          </div>
+                        `).join('');
+                      })()}
+                    </div>
+                  </div>
                 </div>
               </div>
 

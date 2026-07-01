@@ -340,3 +340,38 @@ CREATE POLICY "Allow individual insert access to own cover letters"
 CREATE POLICY "Allow individual delete access to own cover letters"
   ON public.cover_letters FOR DELETE
   USING (auth.uid() = user_id);
+
+-- ==========================================================================
+-- MILESTONE 13: AI FOLLOW-UP ASSISTANT
+-- ==========================================================================
+
+-- Create follow_ups table to store follow-up email drafts
+CREATE TABLE IF NOT EXISTS public.follow_ups (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  job_id UUID REFERENCES public.jobs ON DELETE CASCADE,
+  scenario TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  tone TEXT NOT NULL CHECK (tone IN ('Professional', 'Warm', 'Confident', 'Brief')),
+  days_since_contact INTEGER,
+  suggested_send_date DATE,
+  status TEXT DEFAULT 'draft' NOT NULL CHECK (status IN ('draft', 'sent')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS) on follow_ups
+ALTER TABLE public.follow_ups ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for follow_ups access
+CREATE POLICY "Allow individual read access to own follow ups"
+  ON public.follow_ups FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual insert access to own follow ups"
+  ON public.follow_ups FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow individual delete access to own follow ups"
+  ON public.follow_ups FOR DELETE
+  USING (auth.uid() = user_id);
