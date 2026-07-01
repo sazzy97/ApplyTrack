@@ -572,6 +572,406 @@ function renderLanding() {
       </div>
     </section>
 
+    <!-- =====================================================
+         PRICING SECTION
+         ===================================================== -->
+    <section class="pricing-section" id="pricing">
+      <div class="app-container">
+
+        <!-- Header -->
+        <div class="pricing-section-header">
+          <span class="section-label">Simple, Transparent Pricing</span>
+          <h2>The right plan for every job seeker</h2>
+          <p>Start free. Upgrade when you're ready. Cancel anytime — no lock-in, no hidden fees.</p>
+        </div>
+
+        <!-- Billing Toggle -->
+        <div class="pricing-toggle-wrap">
+          <span class="pricing-toggle-label active" id="pricing-label-monthly">Monthly</span>
+          <button class="pricing-toggle-pill" id="pricing-toggle-btn" aria-label="Toggle billing period" aria-pressed="false"></button>
+          <span class="pricing-toggle-label" id="pricing-label-yearly">Yearly</span>
+          <span class="pricing-save-badge" id="pricing-save-badge">Save 20%</span>
+        </div>
+
+        <!-- Plan Cards -->
+        <div class="pricing-cards-grid">
+
+          <!-- Free Card -->
+          <div class="pricing-card" id="pricing-card-free">
+            <span class="pricing-badge pricing-badge--free"><i class="fas fa-seedling"></i> Free</span>
+            <div class="pricing-card__plan">Free Plan</div>
+            <div class="pricing-card__name">Starter</div>
+            <div class="pricing-card__tagline">Best for casual job seekers getting started.</div>
+            <div class="pricing-card__price">
+              <span class="pricing-card__currency">$</span>
+              <span class="pricing-card__amount" id="price-free">0</span>
+            </div>
+            <div class="pricing-card__period">per month</div>
+            <div class="pricing-card__billing-note" id="billing-note-free">Free forever</div>
+
+            <a href="#/signup" class="pricing-card__cta pricing-card__cta--free">
+              Get Started Free <i class="fas fa-arrow-right"></i>
+            </a>
+
+            <div class="pricing-card__divider"></div>
+            <div class="pricing-card__features-label">What's included</div>
+            <ul class="pricing-card__features">
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Unlimited Job Tracking</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Gmail Integration</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Dashboard &amp; Kanban Workflow</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Interview Tracking</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Basic Analytics</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>25 AI Requests / month</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>1 Resume · 1 Cover Letter</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Email Support</li>
+            </ul>
+          </div>
+
+          <!-- Pro Card (highlighted) -->
+          <div class="pricing-card pricing-card--pro" id="pricing-card-pro">
+            <span class="pricing-badge pricing-badge--popular"><i class="fas fa-fire"></i> Most Popular</span>
+            <div class="pricing-card__plan">Pro Plan</div>
+            <div class="pricing-card__name">Pro</div>
+            <div class="pricing-card__tagline">Best for active job seekers who want every edge.</div>
+            <div class="pricing-card__price">
+              <span class="pricing-card__currency">$</span>
+              <span class="pricing-card__amount" id="price-pro">12</span>
+            </div>
+            <div class="pricing-card__period">per month</div>
+            <div class="pricing-card__billing-note" id="billing-note-pro">&nbsp;</div>
+
+            <a href="#/signup" class="pricing-card__cta pricing-card__cta--pro">
+              Upgrade to Pro <i class="fas fa-bolt"></i>
+            </a>
+
+            <div class="pricing-card__divider"></div>
+            <div class="pricing-card__features-label">Everything in Free, plus</div>
+            <ul class="pricing-card__features">
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Unlimited AI Requests</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>AI Resume Analyzer</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>AI Cover Letter Generator</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>AI Interview Coach</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>AI Follow-Up Writer</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Resume &amp; Cover Letter Library</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Advanced Analytics</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Calendar Integration</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Chrome Extension</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Weekly AI Career Reports</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Priority Support</li>
+            </ul>
+          </div>
+
+          <!-- Team Card -->
+          <div class="pricing-card" id="pricing-card-team">
+            <span class="pricing-badge" style="background: rgba(13,27,75,0.06); color: var(--color-primary);">
+              <i class="fas fa-clock"></i> Coming Soon
+            </span>
+            <div class="pricing-card__plan">Team Plan</div>
+            <div class="pricing-card__name">Team</div>
+            <div class="pricing-card__tagline">For universities, bootcamps, career coaches &amp; organisations.</div>
+            <div class="pricing-card__price">
+              <span class="pricing-card__amount" id="price-team" style="font-size:2rem; color: var(--color-primary);">Custom</span>
+            </div>
+            <div class="pricing-card__period">contact us for pricing</div>
+            <div class="pricing-card__billing-note">&nbsp;</div>
+
+            <a href="mailto:team@applytrack.io" class="pricing-card__cta pricing-card__cta--team">
+              Contact Sales <i class="fas fa-envelope"></i>
+            </a>
+
+            <div class="pricing-card__divider"></div>
+            <div class="pricing-card__features-label">Everything in Pro, plus</div>
+            <ul class="pricing-card__features">
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Multiple Members</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Shared Workspace</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Team Dashboard &amp; Admin Panel</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>User Management</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Shared Resume Templates</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Organisation Analytics</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Recruiter Collaboration</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Centralised Billing</li>
+              <li class="pricing-card__feature"><span class="pricing-card__feature-check"><i class="fas fa-check"></i></span>Dedicated Support</li>
+            </ul>
+          </div>
+
+        </div><!-- /pricing-cards-grid -->
+
+        <!-- ===================================
+             FEATURE COMPARISON TABLE
+             =================================== -->
+        <div class="pricing-comparison-section">
+          <h3>Compare all features</h3>
+          <div class="pricing-table-wrap">
+            <table class="pricing-table" aria-label="Feature comparison table">
+              <thead>
+                <tr>
+                  <th scope="col">Feature</th>
+                  <th scope="col">Free</th>
+                  <th scope="col" class="col-pro"><span class="col-pro-name">Pro</span>Most Popular</th>
+                  <th scope="col">Team</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Core -->
+                <tr class="row-category">
+                  <td colspan="4">Core Tracking</td>
+                </tr>
+                <tr>
+                  <td>Unlimited Job Applications</td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Gmail Sync</td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Kanban Dashboard</td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Interview Tracking</td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <!-- AI Features -->
+                <tr class="row-category">
+                  <td colspan="4">AI Features</td>
+                </tr>
+                <tr>
+                  <td>AI Requests</td>
+                  <td><span class="check-partial">25 / month</span></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i> Unlimited</td>
+                  <td><i class="fas fa-check check-yes"></i> Unlimited</td>
+                </tr>
+                <tr>
+                  <td>AI Resume Analyzer</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>AI Cover Letter Generator</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>AI Interview Coach</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>AI Follow-Up Writer</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>AI Career Assistant (Advisor)</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Weekly AI Career Reports</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <!-- Libraries -->
+                <tr class="row-category">
+                  <td colspan="4">Libraries &amp; Integrations</td>
+                </tr>
+                <tr>
+                  <td>Resume Library</td>
+                  <td><span class="check-partial">1 resume</span></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i> Unlimited</td>
+                  <td><i class="fas fa-check check-yes"></i> Shared</td>
+                </tr>
+                <tr>
+                  <td>Cover Letter Library</td>
+                  <td><span class="check-partial">1 template</span></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i> Unlimited</td>
+                  <td><i class="fas fa-check check-yes"></i> Shared</td>
+                </tr>
+                <tr>
+                  <td>Calendar Sync</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Chrome Extension</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <!-- Analytics -->
+                <tr class="row-category">
+                  <td colspan="4">Analytics &amp; Insights</td>
+                </tr>
+                <tr>
+                  <td>Basic Analytics</td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Advanced Analytics</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Company Insights</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <!-- Team -->
+                <tr class="row-category">
+                  <td colspan="4">Team &amp; Collaboration</td>
+                </tr>
+                <tr>
+                  <td>Team Collaboration</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-times check-no"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Admin Panel &amp; User Management</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-times check-no"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Organisation Analytics</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-times check-no"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <!-- Support -->
+                <tr class="row-category">
+                  <td colspan="4">Support</td>
+                </tr>
+                <tr>
+                  <td>Email Support</td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Priority Support</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-check check-yes"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+                <tr>
+                  <td>Dedicated Support</td>
+                  <td><i class="fas fa-times check-no"></i></td>
+                  <td class="col-pro-cell"><i class="fas fa-times check-no"></i></td>
+                  <td><i class="fas fa-check check-yes"></i></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div><!-- /comparison -->
+
+        <!-- ===================================
+             FAQ SECTION
+             =================================== -->
+        <div class="pricing-faq-section">
+          <h3>Frequently asked questions</h3>
+          <p>Have more questions? <a href="mailto:hello@applytrack.io" style="color:var(--color-secondary); font-weight:600;">Email us</a> and we'll reply within 24 hours.</p>
+
+          <div class="faq-grid">
+
+            <div class="faq-item" id="faq-1">
+              <div class="faq-question" role="button" tabindex="0" aria-expanded="false" aria-controls="faq-answer-1">
+                Can I change plans later?
+              </div>
+              <div class="faq-answer" id="faq-answer-1">
+                Absolutely. You can upgrade or downgrade your plan at any time from your account Settings &rarr; Subscription tab. Changes take effect immediately, and billing is prorated automatically.
+              </div>
+            </div>
+
+            <div class="faq-item" id="faq-2">
+              <div class="faq-question" role="button" tabindex="0" aria-expanded="false" aria-controls="faq-answer-2">
+                Can I cancel anytime?
+              </div>
+              <div class="faq-answer" id="faq-answer-2">
+                Yes. There are no contracts or lock-in periods. Cancel from your Settings page at any time and your Pro features will remain active until the end of your current billing period.
+              </div>
+            </div>
+
+            <div class="faq-item" id="faq-3">
+              <div class="faq-question" role="button" tabindex="0" aria-expanded="false" aria-controls="faq-answer-3">
+                Is my Gmail data secure?
+              </div>
+              <div class="faq-answer" id="faq-answer-3">
+                We use Google's official OAuth 2.0 protocol. We only read job-related emails with your explicit permission and never store email body content. All connections are encrypted with bank-grade 256-bit TLS.
+              </div>
+            </div>
+
+            <div class="faq-item" id="faq-4">
+              <div class="faq-question" role="button" tabindex="0" aria-expanded="false" aria-controls="faq-answer-4">
+                What happens when my subscription expires?
+              </div>
+              <div class="faq-answer" id="faq-answer-4">
+                Your account reverts to the Free plan automatically. Your data is preserved — you won't lose any tracked applications, resumes, or reports. Pro-only features will become read-only until you re-subscribe.
+              </div>
+            </div>
+
+            <div class="faq-item" id="faq-5">
+              <div class="faq-question" role="button" tabindex="0" aria-expanded="false" aria-controls="faq-answer-5">
+                Can I export my data?
+              </div>
+              <div class="faq-answer" id="faq-answer-5">
+                Yes. You can export all your job applications, notes, and reports as a CSV or PDF at any time from Settings &rarr; Data Export. Your data always belongs to you.
+              </div>
+            </div>
+
+            <div class="faq-item" id="faq-6">
+              <div class="faq-question" role="button" tabindex="0" aria-expanded="false" aria-controls="faq-answer-6">
+                Do unused AI requests roll over?
+              </div>
+              <div class="faq-answer" id="faq-answer-6">
+                Free plan AI requests reset monthly and do not roll over. Pro plan users get unlimited requests — so you never have to worry about running out.
+              </div>
+            </div>
+
+            <div class="faq-item" id="faq-7">
+              <div class="faq-question" role="button" tabindex="0" aria-expanded="false" aria-controls="faq-answer-7">
+                What payment methods are accepted?
+              </div>
+              <div class="faq-answer" id="faq-answer-7">
+                We accept all major credit and debit cards (Visa, Mastercard, Amex), Apple Pay, and Google Pay via Stripe. All payments are securely processed — we never store your card details.
+              </div>
+            </div>
+
+            <div class="faq-item" id="faq-8">
+              <div class="faq-question" role="button" tabindex="0" aria-expanded="false" aria-controls="faq-answer-8">
+                Is there a student or non-profit discount?
+              </div>
+              <div class="faq-answer" id="faq-answer-8">
+                Yes! We offer 50% off Pro for verified students and registered non-profit organisations. Email us at <a href="mailto:hello@applytrack.io" style="color:var(--color-secondary);">hello@applytrack.io</a> with proof of eligibility.
+              </div>
+            </div>
+
+          </div><!-- /faq-grid -->
+        </div><!-- /faq-section -->
+
+      </div><!-- /app-container -->
+    </section>
+
     <!-- Call to Action Section -->
     <section class="cta-section">
       <div class="app-container">
@@ -581,7 +981,99 @@ function renderLanding() {
       </div>
     </section>
   `;
+
+  /* ---- Pricing Toggle Logic ---- */
+  let billingYearly = false;
+
+  const prices = {
+    free:  { monthly: 0,  yearly: 0  },
+    pro:   { monthly: 12, yearly: 10 },
+  };
+
+  function updatePricingDisplay() {
+    const period = billingYearly ? 'yearly' : 'monthly';
+
+    // Animate amounts
+    const freeEl = document.getElementById('price-free');
+    const proEl  = document.getElementById('price-pro');
+
+    if (freeEl) freeEl.style.opacity = '0';
+    if (proEl)  proEl.style.opacity  = '0';
+
+    setTimeout(() => {
+      if (freeEl) { freeEl.textContent = prices.free[period]; freeEl.style.opacity = '1'; }
+      if (proEl)  { proEl.textContent  = prices.pro[period];  proEl.style.opacity  = '1'; }
+
+      const freeNote = document.getElementById('billing-note-free');
+      const proNote  = document.getElementById('billing-note-pro');
+      if (freeNote) freeNote.textContent = 'Free forever';
+      if (proNote)  proNote.textContent  = billingYearly ? 'Billed $115 per year · Save $29' : 'Billed monthly · Cancel anytime';
+    }, 130);
+
+    // Toggle labels
+    const lblM = document.getElementById('pricing-label-monthly');
+    const lblY = document.getElementById('pricing-label-yearly');
+    if (lblM) lblM.classList.toggle('active', !billingYearly);
+    if (lblY) lblY.classList.toggle('active',  billingYearly);
+
+    // Toggle pill
+    const pill = document.getElementById('pricing-toggle-btn');
+    if (pill) {
+      pill.classList.toggle('yearly', billingYearly);
+      pill.setAttribute('aria-pressed', String(billingYearly));
+    }
+
+    // Save badge
+    const badge = document.getElementById('pricing-save-badge');
+    if (badge) badge.style.opacity = billingYearly ? '1' : '0.3';
+  }
+
+  const toggleBtn = document.getElementById('pricing-toggle-btn');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      billingYearly = !billingYearly;
+      updatePricingDisplay();
+    });
+    // keyboard support
+    toggleBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        billingYearly = !billingYearly;
+        updatePricingDisplay();
+      }
+    });
+  }
+
+  // Initialise display
+  updatePricingDisplay();
+
+  /* ---- FAQ Accordion Logic ---- */
+  document.querySelectorAll('.faq-item').forEach(item => {
+    const question = item.querySelector('.faq-question');
+    if (!question) return;
+
+    const toggle = () => {
+      const isOpen = item.classList.contains('open');
+      // Close all
+      document.querySelectorAll('.faq-item.open').forEach(i => {
+        i.classList.remove('open');
+        const q = i.querySelector('.faq-question');
+        if (q) q.setAttribute('aria-expanded', 'false');
+      });
+      // Open clicked if it was closed
+      if (!isOpen) {
+        item.classList.add('open');
+        question.setAttribute('aria-expanded', 'true');
+      }
+    };
+
+    question.addEventListener('click', toggle);
+    question.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+  });
 }
+
 
 // 2. SIGN UP PAGE
 function renderSignUp() {
